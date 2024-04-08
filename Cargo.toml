@@ -10,7 +10,12 @@ axum = "0.7.5"
 tokio = { version = "1.36.0", features = ["full"] }
 tower = "0.4.13"
 serde = { version = "1.0.197", features = ["derive"] }
-sqlx = {version = "0.7.4", default-features = false, features = ["runtime-async-std", "macros", "mysql", "time"]}
+sqlx = { version = "0.7.4", default-features = false, features = ["runtime-async-std", "macros", "mysql", "time"] }
 clap = { version = "4.5.4", features = ["derive"] }
 
+jsonwebtoken = "9.3.0"
+chrono = "0.4.37"
+
 dotenv = "0.15.0"
+
+anyhow = "1.0.81"
