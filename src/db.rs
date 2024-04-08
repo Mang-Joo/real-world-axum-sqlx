@@ -1,7 +1,9 @@
 use std::time::Duration;
+
 use sqlx::MySql;
 use sqlx::mysql::MySqlPoolOptions;
-use crate::app_state::Config;
+use crate::config::Config;
+
 
 pub type DbPool = sqlx::Pool<MySql>;
 
