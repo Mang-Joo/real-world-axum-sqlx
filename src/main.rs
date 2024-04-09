@@ -1,20 +1,17 @@
-use std::env;
 use std::sync::Arc;
-use axum::middleware::AddExtension;
-use axum::{Extension, Json, Router};
+
+use axum::{Extension, Router};
 use axum::response::IntoResponse;
-use axum::routing::{get, Route};
-use clap::Parser;
-use dotenv::dotenv;
-use sqlx::Executor;
-use sqlx::mysql::MySqlPoolOptions;
+use axum::routing::get;
 use tokio::net::TcpListener;
-use tower::ServiceBuilder;
-use crate::app_state::{AppState, Config};
-use crate::db::init_db;
+
+use crate::app_state::{AppState, init_app_state};
 
 mod app_state;
 mod db;
+mod auth;
+mod user;
+mod error;
 
 
 async fn handler(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
@@ -39,20 +36,8 @@ async fn handler(Extension(state): Extension<Arc<AppState>>) -> impl IntoRespons
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").unwrap();
-    let hmac_key = env::var("HMAC_KEY").unwrap();
-
-    let config = Config {
-        database_url,
-        hmac_key,
-    };
-
-    let db = init_db(&config).await;
-
-    let app_state = Arc::new(app_state::AppState::new(db));
-
+    let app_state = init_app_state().await;
+    let app_state = Arc::new(app_state);
 
     let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
     let route = Router::new()
