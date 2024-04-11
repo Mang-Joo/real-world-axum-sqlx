@@ -2,7 +2,7 @@ use chrono::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::auth::clock::Clock;
-
+use crate::auth::JwtClock;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtPayload {

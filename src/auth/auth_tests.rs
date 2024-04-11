@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod test {
     use std::sync::Arc;
-    use anyhow::{anyhow, Context};
 
+    use anyhow::anyhow;
     use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 
     use crate::app_state::init_app_state;
@@ -39,7 +39,7 @@ mod test {
 
         let clock = MockClock::new(DateTime::from_naive_utc_and_offset(dt, Utc));
 
-        let jwt_encoder = JwtEncoder::new(app_state, clock);
+        let jwt_encoder = JwtEncoder::new(app_state, Box::new(clock));
 
         let token = jwt_encoder
             .encode_jwt("hello")

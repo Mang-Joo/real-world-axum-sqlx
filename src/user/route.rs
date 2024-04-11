@@ -12,7 +12,7 @@ pub async fn login(app_state: Arc<AppState>) -> Router {
     Router::new()
         .route("/login", post(login_user))
         .with_state(app_state)
-        .layer(middleware::from_extractor())
+        // .layer(middleware::from_extractor())
 }
 
 async fn handle_error(err: anyhow::Error) -> impl IntoResponse {

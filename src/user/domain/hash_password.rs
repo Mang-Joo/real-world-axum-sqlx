@@ -10,6 +10,9 @@ pub trait HashPassword {
     async fn verify(&self, plain_data: String, hashed_data: &String) -> bool;
 }
 
+unsafe impl Send for ArgonHash {}
+unsafe impl Sync for ArgonHash {}
+
 pub struct ArgonHash;
 
 impl ArgonHash {
@@ -71,7 +74,7 @@ mod tests {
         let hello = String::from("hello");
         let hashed_data = String::from("=19$m=19456,t=2,p=1$ULFfcwnYvCZwgiRm1i97yg$OcMjE44RqEVd4fzKFUJtuBJMsVEvQX2641nYX9ZCQDY");
 
-        let response = ArgonHash::default().verify(hello, &hashed_data);
+        let response = ArgonHash::default().verify(hello, &hashed_data).await;
 
         assert_eq!(response, false);
     }

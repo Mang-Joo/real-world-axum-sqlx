@@ -12,19 +12,19 @@ use crate::user::domain::user::User;
 pub async fn login(app_state: Arc<AppState>, login_request: LoginRequest) -> anyhow::Result<LoginResponse> {
     let user = find_by_email(login_request.email, &app_state.pool)
         .await
-        .map_err(|err| Err(anyhow!(err)))?;
+        .map_err(|err| anyhow!(err))?;
 
     let encoded = login_request.password;
 
-    if user.not_verify_password(encoded, &ArgonHash::default()) {
+    if user.not_verify_password(encoded, &ArgonHash::default()).await {
         return Err(anyhow!("Not equal password."));
     }
 
     let jwt_encoder = JwtEncoder::from(app_state);
-    let token = jwt_encoder.encode_jwt(&login_request.email)
+    let token = jwt_encoder.encode_jwt(&user.email)
         .await?;
 
-    Ok(to_response(user, token))
+    Ok(to_response(user, token).await)
 }
 
 #[derive(Debug, Deserialize)]
