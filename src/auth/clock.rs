@@ -6,6 +6,9 @@ pub trait Clock {
     fn now(&self) -> DateTime<Utc>;
 }
 
+unsafe impl Send for RealClock {}
+unsafe impl Sync for RealClock {}
+
 pub struct RealClock;
 
 impl Clock for RealClock {

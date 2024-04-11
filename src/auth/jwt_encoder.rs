@@ -1,22 +1,23 @@
 use std::sync::Arc;
-use anyhow::Context;
 
+use anyhow::Context;
 use jsonwebtoken::{encode, EncodingKey, Header};
 
 use crate::app_state::AppState;
 use crate::auth::auth::JwtPayload;
-use crate::auth::clock::{Clock, RealClock};
+use crate::auth::clock::RealClock;
+use crate::auth::JwtClock;
 
 pub struct JwtEncoder {
     app_state: Arc<AppState>,
-    clock: Box<dyn Clock>,
+    clock: Box<JwtClock>,
 }
 
 impl JwtEncoder {
-    pub fn new(app_state: Arc<AppState>, clock: impl Clock + 'static) -> JwtEncoder {
+    pub fn new(app_state: Arc<AppState>, clock: Box<JwtClock>) -> JwtEncoder {
         JwtEncoder {
             app_state,
-            clock: Box::new(clock),
+            clock,
         }
     }
 

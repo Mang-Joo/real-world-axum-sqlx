@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::auth::clock::Clock;
 
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtPayload {
     sub: String,
@@ -11,7 +12,7 @@ pub struct JwtPayload {
 }
 
 impl JwtPayload {
-    pub fn new(user_id: String, clock: &Box<dyn Clock>) -> JwtPayload {
+    pub fn new(user_id: String, clock: &Box<JwtClock>) -> JwtPayload {
         let now = clock.now()
             .timestamp() as usize;
 

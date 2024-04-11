@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::SaltString;
@@ -62,6 +62,16 @@ mod tests {
         let hashed_data = String::from("$argon2id$v=19$m=19456,t=2,p=1$ULFfcwnYvCZwgiRm1i97yg$OcMjE44RqEVd4fzKFUJtuBJMsVEvQX2641nYX9ZCQDY");
 
         let response = ArgonHash::default().verify(hello, &hashed_data).await;
+
+        assert_eq!(response, false);
+    }
+
+    #[tokio::test]
+    async fn wrong_hashed_data_verify_test() {
+        let hello = String::from("hello");
+        let hashed_data = String::from("=19$m=19456,t=2,p=1$ULFfcwnYvCZwgiRm1i97yg$OcMjE44RqEVd4fzKFUJtuBJMsVEvQX2641nYX9ZCQDY");
+
+        let response = ArgonHash::default().verify(hello, &hashed_data);
 
         assert_eq!(response, false);
     }
