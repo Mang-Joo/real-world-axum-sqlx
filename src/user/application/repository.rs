@@ -3,7 +3,7 @@ use anyhow::{anyhow, Context};
 use crate::db::DbPool;
 use crate::user::domain::user::User;
 
-pub async fn find_by_email(email: String, db_pool: &DbPool) -> anyhow::Result<User> {
+pub async fn find_by_email(email: &String, db_pool: &DbPool) -> anyhow::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
         "SELECT id, email, password, user_name, bio, image FROM users WHERE email = ?",
@@ -51,7 +51,7 @@ mod tests {
     #[tokio::test]
     async fn find_email_test() {
         let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world")).await;
-        let user = find_by_email(String::from("Hi"), &db)
+        let user = find_by_email(&String::from("Hi"), &db)
             .await;
 
         println!("{:?}", user);
