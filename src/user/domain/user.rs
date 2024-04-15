@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::sync::Arc;
 
 use crate::user::domain::hash_password::HashPassword;
 
@@ -6,13 +6,14 @@ use crate::user::domain::hash_password::HashPassword;
 pub struct User {
     id: u32,
     pub email: String,
-    password: RefCell<String>,
+    password: Arc<String>,
     pub user_name: String,
     pub bio: Option<String>,
     pub image: Option<String>,
 }
 
 unsafe impl Send for User {}
+
 unsafe impl Sync for User {}
 
 impl User {
@@ -27,20 +28,15 @@ impl User {
         User {
             id,
             email,
-            password: RefCell::new(password),
+            password: Arc::new(password),
             user_name,
             bio,
             image,
         }
     }
 
-    // pub async fn hash_password(&self, hash: &dyn HashPassword) {}
-
     pub async fn not_verify_password(&self, input_password: String, hash: &(dyn HashPassword + Send + Sync)) -> bool {
-        let password = self.password
-            .borrow()
-            .to_string();
-
-        hash.verify(input_password, &password).await
+        !hash.verify(input_password, &self.password)
+            .await
     }
 }
