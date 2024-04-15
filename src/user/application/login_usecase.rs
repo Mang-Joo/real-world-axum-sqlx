@@ -9,14 +9,12 @@ use crate::user::application::repository::find_by_email;
 use crate::user::domain::hash_password::ArgonHash;
 use crate::user::domain::user::User;
 
-pub async fn login(app_state: Arc<AppState>, login_request: LoginRequest) -> anyhow::Result<LoginResponse> {
-    let user = find_by_email(login_request.email, &app_state.pool)
+pub async fn user_login(app_state: Arc<AppState>, login_request: LoginRequest) -> anyhow::Result<LoginResponse> {
+    let user = find_by_email(&login_request.email, &app_state.pool)
         .await
         .map_err(|err| anyhow!(err))?;
 
-    let encoded = login_request.password;
-
-    if user.not_verify_password(encoded, &ArgonHash::default()).await {
+    if user.not_verify_password(login_request.password, &ArgonHash::default()).await {
         return Err(anyhow!("Not equal password."));
     }
 
