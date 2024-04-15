@@ -1,4 +1,4 @@
 mod handler;
-mod route;
+pub mod route;
 mod application;
 mod domain;
