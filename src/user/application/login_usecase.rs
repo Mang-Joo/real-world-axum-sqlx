@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::auth::jwt_encoder::JwtEncoder;

@@ -10,6 +10,7 @@ mod db;
 mod auth;
 mod user;
 mod error;
+mod validate;
 
 
 #[tokio::main]
