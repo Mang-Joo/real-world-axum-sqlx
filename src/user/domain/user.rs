@@ -4,12 +4,12 @@ use crate::user::domain::hash_password::HashPassword;
 
 #[derive(Debug)]
 pub struct User {
-    id: u32,
-    pub email: String,
+    id: u64,
+    email: String,
     password: Arc<String>,
-    pub user_name: String,
-    pub bio: Option<String>,
-    pub image: Option<String>,
+    user_name: String,
+    bio: Arc<Option<String>>,
+    image: Arc<Option<String>>,
 }
 
 unsafe impl Send for User {}
@@ -18,7 +18,7 @@ unsafe impl Sync for User {}
 
 impl User {
     pub fn new(
-        id: u32,
+        id: u64,
         email: String,
         password: String,
         user_name: String,
@@ -30,13 +30,34 @@ impl User {
             email,
             password: Arc::new(password),
             user_name,
-            bio,
-            image,
+            bio: Arc::new(bio),
+            image: Arc::new(image),
         }
     }
 
     pub async fn not_verify_password(&self, input_password: String, hash: &(dyn HashPassword + Send + Sync)) -> bool {
         !hash.verify(input_password, &self.password)
             .await
+    }
+
+
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+    pub fn email(&self) -> &String {
+        &self.email
+    }
+    pub fn password(&self) -> &String {
+        &self.password.as_ref()
+    }
+    pub fn user_name(&self) -> &str {
+        &self.user_name
+    }
+
+    pub fn bio(&self) -> &Option<String> {
+        &self.bio.as_ref()
+    }
+    pub fn image(&self) -> &Option<String> {
+        &self.image.as_ref()
     }
 }

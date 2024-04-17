@@ -1617,6 +1617,7 @@ dependencies = [
  "tokio",
  "tower",
  "validator",
+ "validator_derive",
 ]
 
 [[package]]
@@ -2418,7 +2419,6 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "url",
- "validator_derive",
 ]
 
 [[package]]

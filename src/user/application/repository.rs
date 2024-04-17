@@ -1,4 +1,7 @@
 use anyhow::{anyhow, Context};
+use log::error;
+use sqlx::Error;
+use sqlx::mysql::MySqlQueryResult;
 
 use crate::db::DbPool;
 use crate::user::domain::user::User;
@@ -20,6 +23,40 @@ pub async fn find_by_email(email: &String, db_pool: &DbPool) -> anyhow::Result<U
     Ok(user.to_domain())
 }
 
+pub async fn save_user(user: User, db_pool: &DbPool) -> anyhow::Result<User> {
+    let row = sqlx::query(
+        "INSERT INTO users (email, password, user_name, bio, image)
+         VALUES (?, ?, ?, ?, ?)
+        ")
+        .bind(user.email())
+        .bind(user.password())
+        .bind(user.user_name())
+        .bind(user.bio())
+        .bind(user.image())
+        .execute(db_pool)
+        .await;
+
+    let row = match row {
+        Ok(row) => { row }
+        Err(err) => {
+            println!("{err}");
+            error!("err is {err}");
+            return Err(anyhow!("Save Failed user. User id is {}", user.email()));
+        }
+    };
+
+    let user = User::new(
+        row.last_insert_id(),
+        user.email().to_owned(),
+        user.password().to_owned(),
+        user.user_name().to_owned(),
+        user.bio().to_owned(),
+        user.image().to_owned(),
+    );
+
+    Ok(user)
+}
+
 struct UserEntity {
     id: i64,
     email: String,
@@ -32,7 +69,7 @@ struct UserEntity {
 impl UserEntity {
     fn to_domain(self) -> User {
         User::new(
-            self.id as u32,
+            self.id as u64,
             self.email,
             self.password,
             self.user_name,

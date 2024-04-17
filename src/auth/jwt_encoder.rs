@@ -28,8 +28,8 @@ impl JwtEncoder {
         }
     }
 
-    pub async fn encode_jwt(&self, user_id: &str) -> anyhow::Result<String> {
-        let jwt_payload = JwtPayload::new(user_id.to_owned(), &self.clock);
+    pub async fn encode_jwt(&self, user_email: &str) -> anyhow::Result<String> {
+        let jwt_payload = JwtPayload::new(user_email.to_owned(), &self.clock);
 
         let encoding_key = &EncodingKey::from_secret(&self.app_state.secret_key.as_ref());
 

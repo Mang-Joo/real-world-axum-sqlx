@@ -3,23 +3,32 @@ use axum::Json;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
 use thiserror::Error;
+use validator::ValidationErrors;
 
-#[repr(i32)]
+const BAD_REQUEST: u16 = 40000;
+const UNAUTHORIZED_ERROR_CODE: u16 = 40001;
+const VALIDATE_ERROR_CODE: u16 = 40002;
+const FORBIDDEN_ERROR_CODE: u16 = 40003;
+const NOT_FOUND_ERROR_CODE: u16 = 40004;
+
 #[derive(Error, Debug)]
 pub enum AppError {
     /// Return `401 Unauthorized`
     #[error("authentication required")]
-    Unauthorized(String) = 40001,
+    Unauthorized(String),
     /// Return `403 Forbidden`
     #[error("user may not perform that action")]
-    Forbidden = 40003,
+    Forbidden,
 
     /// Return `404 Not Found`
     #[error("request path not found")]
-    NotFound = 40004,
+    NotFound,
 
     #[error(transparent)]
-    AnyHow(#[from] anyhow::Error) = 40000,
+    AnyHow(#[from] anyhow::Error),
+
+    #[error(transparent)]
+    ValidateError(#[from] ValidationErrors),
 }
 
 impl AppError {
@@ -29,26 +38,38 @@ impl AppError {
             AppError::Forbidden => { StatusCode::FORBIDDEN }
             AppError::NotFound => { StatusCode::NOT_FOUND }
             AppError::AnyHow(_) => { StatusCode::BAD_REQUEST }
+            AppError::ValidateError(_) => { StatusCode::BAD_REQUEST }
+        }
+    }
+
+    fn error_code(&self) -> u16 {
+        match self {
+            AppError::Unauthorized(_) => { UNAUTHORIZED_ERROR_CODE }
+            AppError::Forbidden => { FORBIDDEN_ERROR_CODE }
+            AppError::NotFound => { NOT_FOUND_ERROR_CODE }
+            AppError::AnyHow(_) => { BAD_REQUEST }
+            AppError::ValidateError(_) => { VALIDATE_ERROR_CODE }
         }
     }
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        (self.status_code(), Json(ErrorResponse::new(&self))).into_response()
+        (self.status_code(), Json(ErrorResponse::new(&self)))
+            .into_response()
     }
 }
 
 #[derive(Serialize)]
 struct ErrorResponse {
-    code: i32,
+    code: u16,
     message: String,
 }
 
 impl ErrorResponse {
     fn new(app_error: &AppError) -> Self {
         ErrorResponse {
-            code: app_error.status_code().as_u16() as i32,
+            code: app_error.error_code(),
             message: app_error.to_string(),
         }
     }
