@@ -1,23 +1,19 @@
 use std::sync::Arc;
+use anyhow::anyhow;
 
-use anyhow::{anyhow, Context};
-use axum::extract::State;
 use log::info;
 use serde::Deserialize;
 use validator_derive::Validate;
 
 use crate::app_state::AppState;
-use crate::auth::jwt_encoder;
-use crate::auth::jwt_encoder::JwtEncoder;
-use crate::user::application::login_usecase::{to_response, UserResponse};
+use crate::app_state::Result;
 use crate::user::application::repository::{find_by_email, save_user};
 use crate::user::domain::user::User;
-use crate::validate::ValidationExtractor;
 
 pub async fn registration(
-    state: Arc<AppState>,
+    state: &Arc<AppState>,
     request: RegistrationUserRequest,
-) -> anyhow::Result<UserResponse> {
+) -> Result<User> {
     let user = request.to_domain();
     info!("registration request email is {}", user.email());
 
@@ -25,24 +21,16 @@ pub async fn registration(
         .await;
 
     match find_user {
-        Ok(_) => { return Err(anyhow!("Already has email.")) }
-        Err(_) => { }
+        Ok(_) => { return Err(anyhow!("Already has email.")); }
+        Err(_) => {}
     };
-
-
 
     let user = save_user(user, &state.pool)
         .await?;
 
-    let jwt_encoder = JwtEncoder::from(state);
-    let token = jwt_encoder.encode_jwt(user.email()).await?;
+    info!("Success Registration! {}", user.email());
 
-    let response = to_response(user, token)
-        .await;
-
-    info!("Success Registration! {}", &response.email);
-
-    Ok(response)
+    Ok(user)
 }
 
 

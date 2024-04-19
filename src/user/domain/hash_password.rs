@@ -6,10 +6,11 @@ use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::SaltString;
 use axum::async_trait;
+use crate::app_state::Result;
 
 #[async_trait]
 pub trait HashPassword {
-    async fn hash(&self, plain_data: &String) -> anyhow::Result<String>;
+    async fn hash(&self, plain_data: &String) -> Result<String>;
     async fn verify(&self, plain_data: String, hashed_data: &Arc<String>) -> bool;
 }
 
@@ -26,7 +27,7 @@ impl ArgonHash {
 
 #[async_trait]
 impl HashPassword for ArgonHash {
-    async fn hash(&self, plain_data: &String) -> anyhow::Result<String> {
+    async fn hash(&self, plain_data: &String) -> Result<String> {
         let salt = SaltString::generate(&mut OsRng);
         let config = Argon2::default();
 

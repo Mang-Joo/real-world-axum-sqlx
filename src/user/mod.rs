@@ -1,3 +1,3 @@
 pub mod route;
 mod application;
-mod domain;
+pub mod domain;

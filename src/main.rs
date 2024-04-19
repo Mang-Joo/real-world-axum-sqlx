@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 
 use crate::app_state::init_app_state;
-use crate::user::route::login;
+use crate::user::route::user;
 
 mod app_state;
 mod db;
@@ -20,7 +20,7 @@ async fn main() {
 
     let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
 
-    let route = login(app_state).await;
+    let route = user(app_state).await;
 
     axum::serve(listener, route).await.unwrap();
 }

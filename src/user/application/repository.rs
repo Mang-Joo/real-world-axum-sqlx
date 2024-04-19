@@ -1,12 +1,11 @@
 use anyhow::{anyhow, Context};
 use log::error;
-use sqlx::Error;
-use sqlx::mysql::MySqlQueryResult;
 
+use crate::app_state::Result;
 use crate::db::DbPool;
 use crate::user::domain::user::User;
 
-pub async fn find_by_email(email: &String, db_pool: &DbPool) -> anyhow::Result<User> {
+pub async fn find_by_email(email: &String, db_pool: &DbPool) -> Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
         "SELECT id, email, password, user_name, bio, image FROM users WHERE email = ?",
@@ -15,15 +14,35 @@ pub async fn find_by_email(email: &String, db_pool: &DbPool) -> anyhow::Result<U
         .await
         .context(format!("Failed to find user with email: {}", email))?;
 
-    let user = match user {
+    let user_entity = match user {
         None => { return Err(anyhow!("Failed to find user with email: {}", email)); }
         Some(user) => { user }
     };
 
-    Ok(user.to_domain())
+    Ok(user_entity.to_domain())
 }
 
-pub async fn save_user(user: User, db_pool: &DbPool) -> anyhow::Result<User> {
+pub async fn find_by_id(id: i64, db_pool: &DbPool) -> Result<User> {
+    let user = sqlx::query_as!(
+        UserEntity,
+        "SELECT id, email, password, user_name, bio, image FROM users WHERE id = ?",
+        id
+    ).fetch_optional(db_pool)
+        .await
+        .context(format!("Failed to find user with email: {}", id))?;
+
+    let user_entity = match user {
+        None => {
+            error!("Failed find user id {}", id);
+            return Err(anyhow!("Failed to find user with id: {}", id));
+        }
+        Some(user) => { user }
+    };
+
+    Ok(user_entity.to_domain())
+}
+
+pub async fn save_user(user: User, db_pool: &DbPool) -> Result<User> {
     let row = sqlx::query(
         "INSERT INTO users (email, password, user_name, bio, image)
          VALUES (?, ?, ?, ?, ?)
@@ -46,7 +65,7 @@ pub async fn save_user(user: User, db_pool: &DbPool) -> anyhow::Result<User> {
     };
 
     let user = User::new(
-        row.last_insert_id(),
+        row.last_insert_id() as i64,
         user.email().to_owned(),
         user.password().to_owned(),
         user.user_name().to_owned(),
@@ -69,7 +88,7 @@ struct UserEntity {
 impl UserEntity {
     fn to_domain(self) -> User {
         User::new(
-            self.id as u64,
+            self.id,
             self.email,
             self.password,
             self.user_name,

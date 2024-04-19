@@ -1,34 +1,37 @@
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
 
-use crate::auth::clock::Clock;
 use crate::auth::JwtClock;
+use crate::user::domain::user::User;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtPayload {
+    id: i64,
     sub: String,
     exp: usize,
     iat: usize,
 }
 
 impl JwtPayload {
-    pub fn new(user_id: String, clock: &Box<JwtClock>) -> JwtPayload {
+    pub fn new(user: &User, clock: &Box<JwtClock>) -> JwtPayload {
         let now = clock.now()
             .timestamp() as usize;
 
         let expired_at = clock.now()
-            .checked_add_signed(Duration::hours(3))
+            .checked_add_signed(Duration::seconds(1))
             .unwrap()
             .timestamp() as usize;
 
         JwtPayload {
-            sub: user_id,
+            id: user.id(),
+            sub: user.email().to_string(),
             exp: expired_at,
             iat: now,
         }
     }
 
-    pub fn user_id(self) -> String {
-        self.sub
+
+    pub fn id(&self) -> i64 {
+        self.id
     }
 }

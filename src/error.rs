@@ -15,7 +15,7 @@ const NOT_FOUND_ERROR_CODE: u16 = 40004;
 pub enum AppError {
     /// Return `401 Unauthorized`
     #[error("authentication required")]
-    Unauthorized(String),
+    Unauthorized,
     /// Return `403 Forbidden`
     #[error("user may not perform that action")]
     Forbidden,
@@ -34,7 +34,7 @@ pub enum AppError {
 impl AppError {
     fn status_code(&self) -> StatusCode {
         match self {
-            AppError::Unauthorized(_) => { StatusCode::UNAUTHORIZED }
+            AppError::Unauthorized => { StatusCode::UNAUTHORIZED }
             AppError::Forbidden => { StatusCode::FORBIDDEN }
             AppError::NotFound => { StatusCode::NOT_FOUND }
             AppError::AnyHow(_) => { StatusCode::BAD_REQUEST }
@@ -44,7 +44,7 @@ impl AppError {
 
     fn error_code(&self) -> u16 {
         match self {
-            AppError::Unauthorized(_) => { UNAUTHORIZED_ERROR_CODE }
+            AppError::Unauthorized => { UNAUTHORIZED_ERROR_CODE }
             AppError::Forbidden => { FORBIDDEN_ERROR_CODE }
             AppError::NotFound => { NOT_FOUND_ERROR_CODE }
             AppError::AnyHow(_) => { BAD_REQUEST }

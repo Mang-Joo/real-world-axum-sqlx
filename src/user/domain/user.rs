@@ -4,7 +4,7 @@ use crate::user::domain::hash_password::HashPassword;
 
 #[derive(Debug)]
 pub struct User {
-    id: u64,
+    id: i64,
     email: String,
     password: Arc<String>,
     user_name: String,
@@ -18,7 +18,7 @@ unsafe impl Sync for User {}
 
 impl User {
     pub fn new(
-        id: u64,
+        id: i64,
         email: String,
         password: String,
         user_name: String,
@@ -41,7 +41,7 @@ impl User {
     }
 
 
-    pub fn id(&self) -> u64 {
+    pub fn id(&self) -> i64 {
         self.id
     }
     pub fn email(&self) -> &String {
