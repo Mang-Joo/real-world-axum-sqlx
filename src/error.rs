@@ -9,7 +9,6 @@ const BAD_REQUEST: u16 = 40000;
 const UNAUTHORIZED_ERROR_CODE: u16 = 40001;
 const VALIDATE_ERROR_CODE: u16 = 40002;
 const FORBIDDEN_ERROR_CODE: u16 = 40003;
-const NOT_FOUND_ERROR_CODE: u16 = 40004;
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -19,10 +18,6 @@ pub enum AppError {
     /// Return `403 Forbidden`
     #[error("user may not perform that action")]
     Forbidden,
-
-    /// Return `404 Not Found`
-    #[error("request path not found")]
-    NotFound,
 
     #[error(transparent)]
     AnyHow(#[from] anyhow::Error),
@@ -36,7 +31,6 @@ impl AppError {
         match self {
             AppError::Unauthorized => { StatusCode::UNAUTHORIZED }
             AppError::Forbidden => { StatusCode::FORBIDDEN }
-            AppError::NotFound => { StatusCode::NOT_FOUND }
             AppError::AnyHow(_) => { StatusCode::BAD_REQUEST }
             AppError::ValidateError(_) => { StatusCode::BAD_REQUEST }
         }
@@ -46,7 +40,6 @@ impl AppError {
         match self {
             AppError::Unauthorized => { UNAUTHORIZED_ERROR_CODE }
             AppError::Forbidden => { FORBIDDEN_ERROR_CODE }
-            AppError::NotFound => { NOT_FOUND_ERROR_CODE }
             AppError::AnyHow(_) => { BAD_REQUEST }
             AppError::ValidateError(_) => { VALIDATE_ERROR_CODE }
         }
