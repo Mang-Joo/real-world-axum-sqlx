@@ -1,0 +1,26 @@
+# 루트 로거 설정
+refresh_rate: 30 seconds
+appenders:
+  # 콘솔 로거
+  stdout:
+    kind: console
+
+  # 파일 로거
+  file:
+    kind: file
+    path: "logs/app.log"
+    append: false
+
+root:
+  level: info
+  appenders:
+    - stdout
+    - file
+
+loggers:
+  # 특정 크레이트/모듈에 대한 로거 설정
+  app::my_module:
+    level: trace
+    appenders:
+      - file
+    additive: false
