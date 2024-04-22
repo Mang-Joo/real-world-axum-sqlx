@@ -1,15 +1,16 @@
-use std::sync::Arc;
+use anyhow::Context;
 
+use crate::app_state;
 use crate::user::domain::hash_password::HashPassword;
 
 #[derive(Debug)]
 pub struct User {
     id: i64,
     email: String,
-    password: Arc<String>,
+    password: String,
     user_name: String,
-    bio: Arc<Option<String>>,
-    image: Arc<Option<String>>,
+    bio: Option<String>,
+    image: Option<String>,
 }
 
 unsafe impl Send for User {}
@@ -28,16 +29,29 @@ impl User {
         User {
             id,
             email,
-            password: Arc::new(password),
+            password,
             user_name,
-            bio: Arc::new(bio),
-            image: Arc::new(image),
+            bio,
+            image,
         }
     }
 
     pub async fn not_verify_password(&self, input_password: String, hash: &(dyn HashPassword + Send + Sync)) -> bool {
         !hash.verify(input_password, &self.password)
             .await
+    }
+
+    pub async fn hash_password(self, hash: &(dyn HashPassword + Send + Sync)) -> app_state::Result<User> {
+        let hashed_password = hash
+            .hash(&self.password)
+            .await
+            .context("Failed hashing password")?;
+
+        let user = User {
+            password: hashed_password,
+            ..self
+        };
+        Ok(user)
     }
 
 
@@ -48,16 +62,45 @@ impl User {
         &self.email
     }
     pub fn password(&self) -> &String {
-        &self.password.as_ref()
+        &self.password
     }
-    pub fn user_name(&self) -> &str {
+    pub fn user_name(&self) -> &String {
         &self.user_name
     }
-
     pub fn bio(&self) -> &Option<String> {
-        &self.bio.as_ref()
+        &self.bio
     }
     pub fn image(&self) -> &Option<String> {
-        &self.image.as_ref()
+        &self.image
+    }
+    pub fn set_email(self, email: String) -> User {
+        User {
+            email,
+            ..self
+        }
+    }
+    pub fn set_password(self, password: String) -> User {
+        User {
+            password,
+            ..self
+        }
+    }
+    pub fn set_user_name(self, user_name: String) -> User {
+        User {
+            user_name,
+            ..self
+        }
+    }
+    pub fn set_bio(self, bio: Option<String>) -> User {
+        User {
+            bio,
+            ..self
+        }
+    }
+    pub fn set_image(self, image: Option<String>) -> Self {
+        User {
+            image,
+            ..self
+        }
     }
 }
