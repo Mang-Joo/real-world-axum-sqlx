@@ -1,20 +1,19 @@
-use std::ops::Deref;
-use std::sync::Arc;
-
 use anyhow::anyhow;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::SaltString;
 use axum::async_trait;
+
 use crate::app_state::Result;
 
 #[async_trait]
 pub trait HashPassword {
     async fn hash(&self, plain_data: &String) -> Result<String>;
-    async fn verify(&self, plain_data: String, hashed_data: &Arc<String>) -> bool;
+    async fn verify(&self, plain_data: String, hashed_data: &String) -> bool;
 }
 
 unsafe impl Send for ArgonHash {}
+
 unsafe impl Sync for ArgonHash {}
 
 pub struct ArgonHash;
@@ -40,12 +39,10 @@ impl HashPassword for ArgonHash {
     }
 
 
-    async fn verify(&self, plain_data: String, hashed_data: &Arc<String>) -> bool {
+    async fn verify(&self, plain_data: String, hashed_data: &String) -> bool {
         let argon2 = Argon2::default();
-        let hashed_data = Arc::clone(hashed_data);
-        let hashed_data = hashed_data.deref().to_string();
 
-        let hash = PasswordHash::new(&hashed_data);
+        let hash = PasswordHash::new(hashed_data);
 
         let hash = match hash {
             Ok(hash) => { hash }
