@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use axum::extract::State;
-use axum::Json;
+use axum::{Extension, Json};
 use axum::response::IntoResponse;
 use serde::Serialize;
 
@@ -11,11 +10,12 @@ use crate::error::AppError;
 use crate::user::application::{get_current_user_usecase, login_usecase, registration_usecase};
 use crate::user::application::login_usecase::LoginRequest;
 use crate::user::application::registration_usecase::RegistrationUserRequest;
+use crate::user::application::update_user_usecase::{update_user, UpdateUserRequest};
 use crate::user::domain::user::User;
 use crate::validate::{JwtValidationExtractor, ValidationExtractor};
 
 pub async fn login_user(
-    State(state): State<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
     ValidationExtractor(payload): ValidationExtractor<LoginRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let response = login_usecase::user_login(state, payload)
@@ -28,7 +28,7 @@ pub async fn login_user(
 }
 
 pub async fn registration_user(
-    State(state): State<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
     ValidationExtractor(request): ValidationExtractor<RegistrationUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let user = registration_usecase::registration(
@@ -45,12 +45,24 @@ pub async fn registration_user(
 }
 
 pub async fn get_current_user(
-    State(state): State<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
     JwtValidationExtractor(user_id): JwtValidationExtractor,
 ) -> Result<impl IntoResponse, AppError> {
     let user = get_current_user_usecase::get_current_user(user_id, state).await?;
 
     let response = to_response_by_user(user).await;
+
+    Ok(Json(response))
+}
+
+pub async fn update_user_handler(
+    JwtValidationExtractor(user_id): JwtValidationExtractor,
+    Extension(state): Extension<Arc<AppState>>,
+    ValidationExtractor(request): ValidationExtractor<UpdateUserRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let updated_user = update_user(user_id, &state, request).await?;
+
+    let response = to_response_by_user(updated_user).await;
 
     Ok(Json(response))
 }
