@@ -1,13 +1,14 @@
 use std::sync::Arc;
-use anyhow::anyhow;
 
+use anyhow::anyhow;
 use log::info;
 use serde::Deserialize;
 use validator_derive::Validate;
 
 use crate::app_state::AppState;
 use crate::app_state::Result;
-use crate::user::application::repository::{find_by_email, save_user};
+use crate::user::application::repository::{find_by_email, find_by_user_name, save_user};
+use crate::user::domain::hash_password::ArgonHash;
 use crate::user::domain::user::User;
 
 pub async fn registration(
@@ -25,7 +26,18 @@ pub async fn registration(
         Err(_) => {}
     };
 
-    let user = save_user(user, &state.pool)
+    let find_user = find_by_user_name(user.user_name(), &state.pool).await;
+
+    match find_user {
+        Ok(_) => { return Err(anyhow!("Already has username.")); }
+        Err(_) => {}
+    };
+
+    let user = user.hash_password(&ArgonHash::default()).await?;
+    let user = save_user(
+        user,
+        &state.pool,
+    )
         .await?;
 
     info!("Success Registration! {}", user.email());
