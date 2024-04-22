@@ -18,7 +18,7 @@ impl JwtPayload {
             .timestamp() as usize;
 
         let expired_at = clock.now()
-            .checked_add_signed(Duration::seconds(1))
+            .checked_add_signed(Duration::hours(3))
             .unwrap()
             .timestamp() as usize;
 
