@@ -69,8 +69,6 @@ mod test {
                 .and_hms_opt(9, 10, 11)
                 .unwrap();
 
-        let clock = MockClock::new(DateTime::from_naive_utc_and_offset(dt, Utc));
-
         let app_state = init_app_state().await;
         let app_state = Arc::new(app_state);
         let jwt_decoder = JwtDecoder::new(app_state);
@@ -111,7 +109,7 @@ mod test {
         let clock = RealClock;
         let now = RealClock::now(&clock);
         println!("before now : {now}");
-        let sleep = sleep(Duration::from_secs(2)).await;
+        sleep(Duration::from_secs(2)).await;
         let now = RealClock::now(&clock);
         println!("after now : {now}");
 
