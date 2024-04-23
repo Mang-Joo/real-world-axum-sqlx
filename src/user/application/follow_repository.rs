@@ -29,7 +29,7 @@ pub async fn is_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) ->
 }
 
 pub async fn save_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) -> app_state::Result<bool> {
-    let result = sqlx::query("
+    let _ = sqlx::query("
     INSERT INTO user_follow (follower_id, following_id, created_at, updated_at, deleted)
     VALUES (?, ?, ? , ?, ?)
     ")
