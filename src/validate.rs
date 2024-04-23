@@ -75,6 +75,7 @@ impl<S> FromRequestParts<S> for JwtValidationExtractor
 #[derive(Debug, Clone, Copy, Default)]
 pub struct OptionalAuthenticateExtractor(pub Option<i64>);
 
+#[async_trait]
 impl<S> FromRequestParts<S> for OptionalAuthenticateExtractor
     where
         S: Send + Sync {
@@ -82,12 +83,15 @@ impl<S> FromRequestParts<S> for OptionalAuthenticateExtractor
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let token = if let Some(header) = parts.headers.get(AUTHORIZATION) {
-            header.to_str()
-                .replace("Bearer ", "")
+            match header.to_str() {
+                Ok(header_value) => { header_value.replace("Bearer ", "") }
+                Err(_) => {
+                    return Ok(OptionalAuthenticateExtractor(None));
+                }
+            }
         } else {
-            return Ok(None);
+            return Ok(OptionalAuthenticateExtractor(None));
         };
-
 
         let app_state = parts.extensions.get::<Arc<AppState>>().ok_or_else(|| {
             return AppError::AnyHow(anyhow!("Can't get _state"));
@@ -95,8 +99,9 @@ impl<S> FromRequestParts<S> for OptionalAuthenticateExtractor
             .map_err(|err| { return err; })?;
 
         let jwt_decoder = JwtDecoder::new(app_state.to_owned());
-        let payload = jwt_decoder.decode_token(&token).await?;
+        let payload = jwt_decoder.decode_token(&token)
+            .await?;
 
-        Ok(JwtValidationExtractor(payload.id()))
+        Ok(OptionalAuthenticateExtractor(Some(payload.id())))
     }
 }
