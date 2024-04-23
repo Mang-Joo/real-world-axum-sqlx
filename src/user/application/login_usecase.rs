@@ -7,8 +7,8 @@ use validator_derive::Validate;
 use crate::app_state::AppState;
 use crate::app_state::Result;
 use crate::auth::jwt_encoder::JwtEncoder;
-use crate::user::application::handler::{to_response, UserResponse};
-use crate::user::application::repository::find_by_email;
+use crate::user::application::user_handler::{to_response, UserResponse};
+use crate::user::application::user_repository::find_by_email;
 use crate::user::domain::hash_password::ArgonHash;
 
 pub async fn user_login(app_state: Arc<AppState>, login_request: LoginRequest) -> Result<UserResponse> {

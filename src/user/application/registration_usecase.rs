@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use chrono::Utc;
 use log::info;
 use serde::Deserialize;
 use validator_derive::Validate;
 
 use crate::app_state::AppState;
 use crate::app_state::Result;
-use crate::user::application::repository::{find_by_email, find_by_user_name, save_user};
+use crate::user::application::user_repository::{find_by_email, find_by_user_name, save_user};
 use crate::user::domain::hash_password::ArgonHash;
 use crate::user::domain::user::User;
 
@@ -56,7 +57,6 @@ pub struct RegistrationUserRequest {
     password: Option<String>,
     bio: Option<String>,
     image: Option<String>,
-
 }
 
 impl RegistrationUserRequest {
@@ -68,6 +68,8 @@ impl RegistrationUserRequest {
             self.username.unwrap(),
             self.bio,
             self.image,
+            Utc::now(),
+            Utc::now(),
         )
     }
 }
