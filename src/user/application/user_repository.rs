@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context};
-use chrono::{DateTime, NaiveDateTime};
+use chrono::{NaiveDateTime};
 use log::error;
 use sqlx::{Encode, FromRow, Type};
 

@@ -1,8 +1,7 @@
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use chrono::Utc;
 use log::{error, info};
-use sqlx::{Error, Row};
-use sqlx::mysql::MySqlQueryResult;
+use sqlx::Row;
 
 use crate::app_state;
 use crate::db::DbPool;
@@ -41,8 +40,8 @@ pub async fn save_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) 
         .execute(db_pool)
         .await
         .map_err(|err| {
-            error!("Following error follower id is {} and following id is {}", follower_id, following_id);
-            anyhow!("Following User Error")
+            error!("Following error follower id is {} and following id is {} \n Error is {}", follower_id, following_id, err);
+            anyhow!("Following User Error {}", err)
         })?;
 
     Ok(true)
