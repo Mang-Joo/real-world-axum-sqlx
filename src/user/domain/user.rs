@@ -1,4 +1,5 @@
 use anyhow::Context;
+use chrono::{DateTime, Utc};
 
 use crate::app_state;
 use crate::user::domain::hash_password::HashPassword;
@@ -11,6 +12,8 @@ pub struct User {
     user_name: String,
     bio: Option<String>,
     image: Option<String>,
+    registration_date: DateTime<Utc>,
+    modified_date: DateTime<Utc>,
 }
 
 unsafe impl Send for User {}
@@ -25,6 +28,8 @@ impl User {
         user_name: String,
         bio: Option<String>,
         image: Option<String>,
+        registration_date: DateTime<Utc>,
+        modified_date: DateTime<Utc>,
     ) -> User {
         User {
             id,
@@ -33,6 +38,8 @@ impl User {
             user_name,
             bio,
             image,
+            registration_date,
+            modified_date,
         }
     }
 
@@ -73,34 +80,47 @@ impl User {
     pub fn image(&self) -> &Option<String> {
         &self.image
     }
+
+
     pub fn set_email(self, email: String) -> User {
         User {
             email,
+            modified_date: Utc::now(),
             ..self
         }
     }
     pub fn set_password(self, password: String) -> User {
         User {
             password,
+            modified_date: Utc::now(),
             ..self
         }
     }
     pub fn set_user_name(self, user_name: String) -> User {
         User {
             user_name,
+            modified_date: Utc::now(),
             ..self
         }
     }
     pub fn set_bio(self, bio: Option<String>) -> User {
         User {
             bio,
+            modified_date: Utc::now(),
             ..self
         }
     }
     pub fn set_image(self, image: Option<String>) -> Self {
         User {
             image,
+            modified_date: Utc::now(),
             ..self
         }
+    }
+    pub fn registration_date(&self) -> DateTime<Utc> {
+        self.registration_date
+    }
+    pub fn modified_date(&self) -> DateTime<Utc> {
+        self.modified_date
     }
 }
