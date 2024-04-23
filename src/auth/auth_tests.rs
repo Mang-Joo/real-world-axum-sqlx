@@ -51,6 +51,8 @@ mod test {
             String::new(),
             Some(String::new()),
             Some(String::new()),
+            Utc::now(),
+            Utc::now(),
         );
 
         let token = jwt_encoder
@@ -98,6 +100,8 @@ mod test {
             String::new(),
             Some(String::new()),
             Some(String::new()),
+            Utc::now(),
+            Utc::now(),
         );
 
         let jwt = encoder.encode_jwt(&user).await;
