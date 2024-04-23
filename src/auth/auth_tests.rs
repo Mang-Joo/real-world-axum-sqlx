@@ -7,10 +7,10 @@ mod test {
     use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
     use tokio::time::sleep;
 
-    use crate::app_state::init_app_state;
     use crate::auth::clock::{Clock, RealClock};
     use crate::auth::jwt_decoder::JwtDecoder;
     use crate::auth::jwt_encoder::JwtEncoder;
+    use crate::config::app_state::init_app_state;
     use crate::user::domain::user::User;
 
     pub struct MockClock {
