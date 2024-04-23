@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use axum::{Extension, Router};
-use axum::routing::{get, post, put};
+use axum::routing::{delete, get, post, put};
 
-use crate::app_state::AppState;
-use crate::error::error_handler;
-use crate::user::application::follow_handler::{follow_user_handler, get_profile_handler};
+use crate::config::app_state::AppState;
+use crate::config::error::error_handler;
+use crate::user::application::follow_handler::{follow_user_handler, get_profile_handler, unfollow_user_handler};
 use crate::user::application::user_handler::{get_current_user, login_user, registration_user, update_user_handler};
 
 pub async fn user() -> Router {
@@ -20,6 +20,7 @@ pub async fn follow() -> Router {
     Router::new()
         .route("/profiles/:username", get(get_profile_handler))
         .route("/profiles/:username/follow", post(follow_user_handler))
+        .route("/profiles/:username/follow", delete(unfollow_user_handler))
 }
 
 pub async fn route(app_state: Arc<AppState>) -> Router {

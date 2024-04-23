@@ -5,9 +5,9 @@ use chrono::Utc;
 use log::info;
 use serde::Deserialize;
 use validator_derive::Validate;
+use crate::config;
+use crate::config::app_state::AppState;
 
-use crate::app_state::AppState;
-use crate::app_state::Result;
 use crate::user::application::user_repository::{find_by_email, find_by_user_name, save_user};
 use crate::user::domain::hash_password::ArgonHash;
 use crate::user::domain::user::User;
@@ -15,7 +15,7 @@ use crate::user::domain::user::User;
 pub async fn registration(
     state: &Arc<AppState>,
     request: RegistrationUserRequest,
-) -> Result<User> {
+) -> config::Result<User> {
     let user = request.to_domain();
     info!("registration request email is {}", user.email());
 

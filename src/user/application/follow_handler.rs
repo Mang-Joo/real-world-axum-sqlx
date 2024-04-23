@@ -5,19 +5,18 @@ use axum::extract::Path;
 use axum::response::IntoResponse;
 use serde::Serialize;
 
-use crate::app_state::AppState;
-use crate::error::AppError;
-use crate::user::application::follow_usecase::follow_user;
-use crate::user::application::get_profile_usecase::get_profile;
+use crate::config::app_state::AppState;
+use crate::config::error::AppError;
+use crate::config::validate::{JwtValidationExtractor, OptionalAuthenticateExtractor};
+use crate::user::application::{follow_usecase, get_profile_usecase};
 use crate::user::domain::user::User;
-use crate::validate::{JwtValidationExtractor, OptionalAuthenticateExtractor};
 
 pub async fn get_profile_handler(
     OptionalAuthenticateExtractor(user_id): OptionalAuthenticateExtractor,
     Extension(state): Extension<Arc<AppState>>,
     Path(user_name): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let (user, is_follow) = get_profile(state, user_id, user_name).await?;
+    let (user, is_follow) = get_profile_usecase::get_profile(state, user_id, user_name).await?;
 
     let response = ProfileResponse::new(user, is_follow);
 
@@ -29,7 +28,20 @@ pub async fn follow_user_handler(
     Extension(state): Extension<Arc<AppState>>,
     Path(user_name): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let (user, is_follow) = follow_user(user_id, user_name, state).await?;
+    let (user, is_follow) = follow_usecase::follow_user(user_id, user_name, state).await?;
+
+    let response = ProfileResponse::new(user, is_follow);
+
+    Ok(Json(response))
+}
+
+pub async fn unfollow_user_handler(
+    JwtValidationExtractor(user_id): JwtValidationExtractor,
+    Extension(state): Extension<Arc<AppState>>,
+    Path(user_name): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let (user, is_follow) = follow_usecase::unfollow_user(user_id, user_name, state)
+        .await?;
 
     let response = ProfileResponse::new(user, is_follow);
 

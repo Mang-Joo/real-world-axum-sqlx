@@ -1,16 +1,16 @@
 use anyhow::{anyhow, Context};
-use chrono::{NaiveDateTime};
+use chrono::NaiveDateTime;
 use log::error;
 use sqlx::{Encode, FromRow, Type};
 
-use crate::app_state::Result;
-use crate::db::DbPool;
+use crate::config;
+use crate::config::db::DbPool;
 use crate::user::domain::user::User;
 
-pub async fn find_by_email(email: &String, db_pool: &DbPool) -> Result<User> {
+pub async fn find_by_email(email: &String, db_pool: &DbPool) -> config::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
-        "SELECT id, email, password, user_name, bio, image, registration_date, modified_date, deleted
+        "SELECT id, email, password, user_name, bio, image, registration_date, modified_date
         FROM users WHERE email = ? and deleted = false",
         email
     ).fetch_optional(db_pool)
@@ -25,10 +25,10 @@ pub async fn find_by_email(email: &String, db_pool: &DbPool) -> Result<User> {
     Ok(user_entity.to_domain())
 }
 
-pub async fn find_by_user_name(user_name: &String, db_pool: &DbPool) -> Result<User> {
+pub async fn find_by_user_name(user_name: &String, db_pool: &DbPool) -> config::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
-        "SELECT id, email, password, user_name, bio, image, registration_date, modified_date, deleted
+        "SELECT id, email, password, user_name, bio, image, registration_date, modified_date
         FROM users WHERE user_name = ? and deleted = false",
         user_name
     ).fetch_optional(db_pool)
@@ -43,10 +43,10 @@ pub async fn find_by_user_name(user_name: &String, db_pool: &DbPool) -> Result<U
     Ok(user_entity.to_domain())
 }
 
-pub async fn find_by_id(id: i64, db_pool: &DbPool) -> Result<User> {
+pub async fn find_by_id(id: i64, db_pool: &DbPool) -> config::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
-        "SELECT id, email, password, user_name, bio, image, registration_date, modified_date, deleted
+        "SELECT id, email, password, user_name, bio, image, registration_date, modified_date
         FROM users WHERE id = ? and deleted = false",
         id
     ).fetch_optional(db_pool)
@@ -64,7 +64,7 @@ pub async fn find_by_id(id: i64, db_pool: &DbPool) -> Result<User> {
     Ok(user_entity.to_domain())
 }
 
-pub async fn update_user_entity(user: &User, db_pool: &DbPool) -> Result<()> {
+pub async fn update_user_entity(user: &User, db_pool: &DbPool) -> config::Result<()> {
     let entity = UserEntity::from_domain(user);
 
     let result = sqlx::query(r#"
@@ -95,7 +95,7 @@ pub async fn update_user_entity(user: &User, db_pool: &DbPool) -> Result<()> {
     Ok(())
 }
 
-pub async fn save_user(user: User, db_pool: &DbPool) -> Result<User> {
+pub async fn save_user(user: User, db_pool: &DbPool) -> config::Result<User> {
     let row = sqlx::query(
         "INSERT INTO users (email, password, user_name, bio, image, registration_date, modified_date, deleted)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -143,7 +143,6 @@ struct UserEntity {
     image: Option<String>,
     registration_date: NaiveDateTime,
     modified_date: NaiveDateTime,
-    deleted: i8,
 }
 
 impl UserEntity {
@@ -170,7 +169,6 @@ impl UserEntity {
             image: domain.image().to_owned(),
             registration_date: domain.registration_date().naive_utc(),
             modified_date: domain.modified_date().naive_utc(),
-            deleted: false as i8,
         }
     }
 }
@@ -178,7 +176,7 @@ impl UserEntity {
 
 #[cfg(test)]
 mod tests {
-    use crate::db::init_db;
+    use crate::config::db::init_db;
     use crate::user::application::user_repository::{find_by_email, find_by_id, update_user_entity};
 
     #[tokio::test]

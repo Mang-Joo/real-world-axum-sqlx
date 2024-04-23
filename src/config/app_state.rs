@@ -2,9 +2,8 @@ use std::env;
 
 use dotenv::dotenv;
 
-use crate::db::{DbPool, init_db};
+use crate::config::db::{DbPool, init_db};
 
-pub type Result<T> = anyhow::Result<T>;
 
 #[derive(Debug)]
 pub struct AppState {

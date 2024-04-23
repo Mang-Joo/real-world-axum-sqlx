@@ -3,11 +3,11 @@ use std::sync::Arc;
 use anyhow::Context;
 use jsonwebtoken::{encode, EncodingKey, Header};
 
-use crate::app_state::AppState;
-use crate::app_state::Result;
 use crate::auth::auth::JwtPayload;
 use crate::auth::clock::RealClock;
 use crate::auth::JwtClock;
+use crate::config;
+use crate::config::app_state::AppState;
 use crate::user::domain::user::User;
 
 pub struct JwtEncoder {
@@ -30,7 +30,7 @@ impl JwtEncoder {
         }
     }
 
-    pub async fn encode_jwt(&self, user: &User) -> Result<String> {
+    pub async fn encode_jwt(&self, user: &User) -> config::Result<String> {
         let jwt_payload = JwtPayload::new(user, &self.clock);
 
         let encoding_key = &EncodingKey::from_secret(&self.app_state.secret_key.as_ref());

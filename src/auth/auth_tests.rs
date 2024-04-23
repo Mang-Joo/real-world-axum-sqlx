@@ -59,18 +59,10 @@ mod test {
             .encode_jwt(&user)
             .await
             .map_err(|err| anyhow!(err));
-
-        // assert_eq!(token, "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJoZWxsbyIsImV4cCI6MTcxMjQ5MTgxMSwiaWF0IjoxNzEyNDgxMDExfQ.YzWeIIXoSQPnwB6oYS6rkasivXgSUVkEIvuXcbp_gnw");
     }
 
     #[tokio::test]
     async fn decode_jwt_test() {
-        let dt: NaiveDateTime =
-            NaiveDate::from_ymd_opt(2024, 4, 7)
-                .unwrap()
-                .and_hms_opt(9, 10, 11)
-                .unwrap();
-
         let app_state = init_app_state().await;
         let app_state = Arc::new(app_state);
         let jwt_decoder = JwtDecoder::new(app_state);

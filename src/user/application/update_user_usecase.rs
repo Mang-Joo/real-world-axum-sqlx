@@ -3,8 +3,8 @@ use std::sync::Arc;
 use serde::Deserialize;
 use validator_derive::Validate;
 
-use crate::app_state;
-use crate::app_state::AppState;
+use crate::config;
+use crate::config::app_state::AppState;
 use crate::user::application::user_repository;
 use crate::user::application::user_repository::update_user_entity;
 use crate::user::domain::hash_password::ArgonHash;
@@ -14,7 +14,7 @@ pub async fn update_user(
     user_id: i64,
     app_state: &Arc<AppState>,
     request: UpdateUserRequest,
-) -> app_state::Result<User> {
+) -> config::Result<User> {
     let user = user_repository::find_by_id(user_id, &app_state.pool).await?;
 
     let updated_user = user.set_user_name(request.user_name.unwrap())

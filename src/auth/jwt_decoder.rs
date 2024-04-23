@@ -4,9 +4,9 @@ use anyhow::anyhow;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use log::error;
 
-use crate::app_state::AppState;
-use crate::app_state::Result;
 use crate::auth::auth::JwtPayload;
+use crate::config;
+use crate::config::app_state::AppState;
 
 pub struct JwtDecoder {
     app_state: Arc<AppState>,
@@ -18,7 +18,7 @@ impl JwtDecoder {
             app_state,
         }
     }
-    pub async fn decode_token(&self, token: &String) -> Result<JwtPayload> {
+    pub async fn decode_token(&self, token: &String) -> config::Result<JwtPayload> {
         let mut validation = Validation::default();
         validation.leeway = 0;
 

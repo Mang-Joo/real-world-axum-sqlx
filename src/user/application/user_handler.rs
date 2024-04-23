@@ -4,15 +4,15 @@ use axum::{Extension, Json};
 use axum::response::IntoResponse;
 use serde::Serialize;
 
-use crate::app_state::AppState;
 use crate::auth::jwt_encoder::JwtEncoder;
-use crate::error::AppError;
+use crate::config::app_state::AppState;
+use crate::config::error::AppError;
+use crate::config::validate::{JwtValidationExtractor, ValidationExtractor};
 use crate::user::application::{get_current_user_usecase, login_usecase, registration_usecase};
 use crate::user::application::login_usecase::LoginRequest;
 use crate::user::application::registration_usecase::RegistrationUserRequest;
 use crate::user::application::update_user_usecase::{update_user, UpdateUserRequest};
 use crate::user::domain::user::User;
-use crate::validate::{JwtValidationExtractor, ValidationExtractor};
 
 pub async fn login_user(
     Extension(state): Extension<Arc<AppState>>,

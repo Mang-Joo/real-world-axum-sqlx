@@ -1,7 +1,7 @@
 use anyhow::Context;
 use chrono::{DateTime, Utc};
+use crate::config;
 
-use crate::app_state;
 use crate::user::domain::hash_password::HashPassword;
 
 #[derive(Debug)]
@@ -48,7 +48,7 @@ impl User {
             .await
     }
 
-    pub async fn hash_password(self, hash: &(dyn HashPassword + Send + Sync)) -> app_state::Result<User> {
+    pub async fn hash_password(self, hash: &(dyn HashPassword + Send + Sync)) -> config::Result<User> {
         let hashed_password = hash
             .hash(&self.password)
             .await

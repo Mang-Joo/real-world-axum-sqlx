@@ -7,9 +7,9 @@ use axum::http::request::Parts;
 use serde::de::DeserializeOwned;
 use validator::Validate;
 
-use crate::app_state::AppState;
 use crate::auth::jwt_decoder::JwtDecoder;
-use crate::error::AppError;
+use crate::config::app_state::AppState;
+use crate::config::error::AppError;
 
 const AUTHORIZATION: &str = "Authorization";
 
