@@ -103,6 +103,6 @@ mod test {
 
         let result = unfollow(1, 2, &db).await;
 
-        assert_eq!(result, true);
+        assert_eq!(result.is_ok(), true);
     }
 }

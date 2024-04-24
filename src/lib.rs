@@ -5,6 +5,7 @@ use tokio::net::TcpListener;
 use crate::config::app_state::init_app_state;
 use crate::user::route::route;
 
+pub mod article;
 pub mod user;
 pub mod auth;
 pub mod config;
