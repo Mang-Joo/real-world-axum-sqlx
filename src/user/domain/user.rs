@@ -4,7 +4,7 @@ use crate::config;
 
 use crate::user::domain::hash_password::HashPassword;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct User {
     id: i64,
     email: String,
