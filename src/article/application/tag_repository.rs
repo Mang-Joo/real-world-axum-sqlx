@@ -1,21 +1,20 @@
 use anyhow::anyhow;
-use log::error;
-use sqlx::{QueryBuilder};
+use log::{error, info};
+use sqlx::{MySql, QueryBuilder, Transaction};
 
 use crate::article::domain::tag::Tag;
 use crate::config;
-use crate::config::db::DbPool;
 
 pub async fn save_tags(
     tags: &Vec<Tag>,
-    db_pool: &DbPool,
+    db_pool: &mut Transaction<'_, MySql>,
 ) -> config::Result<Vec<Tag>> {
     QueryBuilder::new("INSERT IGNORE INTO tag (tag_name)")
         .push_values(tags, |mut builder, tag| {
             builder.push_bind(tag.tag().to_owned());
         })
         .build()
-        .fetch_all(db_pool)
+        .fetch_all(&mut **db_pool)
         .await
         .map_err(|err| {
             error!("Failed save tag {}", err);
@@ -24,18 +23,18 @@ pub async fn save_tags(
         })?
         .clear();
 
+    info!("Save tags succeed");
+
     Ok(tags.to_owned())
 }
 
 struct TagEntity {
-    id: i64,
     tag_name: String,
 }
 
 impl TagEntity {
     fn from_domain(tag: Tag) -> Self {
         TagEntity {
-            id: 0,
             tag_name: tag.tag().to_owned(),
         }
     }

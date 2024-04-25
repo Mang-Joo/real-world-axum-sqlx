@@ -1,6 +1,7 @@
-use anyhow::{anyhow};
+use anyhow::anyhow;
 use chrono::{DateTime, Utc};
-use log::error;
+use log::{error, info};
+use sqlx::{MySql, Transaction};
 
 use tag_repository::save_tags;
 
@@ -16,7 +17,10 @@ pub async fn save_article(
     article: Article,
     db_pool: &DbPool,
 ) -> config::Result<Article> {
-    let inserted_id = sqlx::query(r#"
+
+    let mut transaction: Transaction<'_, MySql> = db_pool.begin().await.unwrap();
+
+    let result = sqlx::query(r#"
         INSERT INTO article (title, description, body, created_at, updated_at, user_id)
         VALUES (?, ?, ?, ?, ?, ?)
     "#)
@@ -26,21 +30,28 @@ pub async fn save_article(
         .bind(article.created_at())
         .bind(article.updated_at())
         .bind(article.author().id())
-        .execute(db_pool)
-        .await
-        .map_err(|err| {
-            error!("Save article error {}", err);
-            anyhow!("Failed save article")
-        })?
-        .last_insert_id() as i64;
+        .execute(&mut *transaction)
+        .await?;
+
+    let inserted_id = result.last_insert_id() as i64;
 
     let tags = if let Some(tags) = article.tag_list() {
-        let tags = save_tags(tags, db_pool).await?;
+        info!("tags {:?}", tags);
 
-        save_article_and_tags(inserted_id, &tags, db_pool).await?;
+        let tags = save_tags(tags, &mut transaction).await?;
 
+        save_article_and_tags(inserted_id, &tags, &mut transaction).await?;
         Some(tags)
     } else { None };
+
+    let _ = transaction
+        .commit()
+        .await
+        .map_err(|err| {
+            error!("Transaction commit error: {}", err);
+            anyhow!("Transaction failed")
+        });
+
 
     let article = Article::new(
         inserted_id as i64,

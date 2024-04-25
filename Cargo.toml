@@ -18,7 +18,7 @@ jsonwebtoken = "9.3.0"
 argon2 = "0.5.3"
 
 # 시간
-chrono = "0.4.38"
+chrono = { version = "0.4.38", features = ["serde"] }
 
 # env
 dotenv = "0.15.0"
