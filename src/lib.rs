@@ -26,7 +26,7 @@ pub async fn start_application() -> () {
     axum::serve(listener, route).await.unwrap();
 }
 
-async fn create_route(app_state: Arc<AppState>) -> Router {
+pub async fn create_route(app_state: Arc<AppState>) -> Router {
     Router::new()
         .nest("/api", user_route().await)
         .nest("/api", article_route().await)
