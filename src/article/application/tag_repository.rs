@@ -28,18 +28,6 @@ pub async fn save_tags(
     Ok(tags.to_owned())
 }
 
-struct TagEntity {
-    tag_name: String,
-}
-
-impl TagEntity {
-    fn from_domain(tag: Tag) -> Self {
-        TagEntity {
-            tag_name: tag.tag().to_owned(),
-        }
-    }
-}
-
 
 mod tests {
     use crate::article::application::tag_repository::save_tags;

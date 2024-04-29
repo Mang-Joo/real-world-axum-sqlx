@@ -1,10 +1,7 @@
-use std::collections::HashMap;
-
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode};
 use serde::Deserialize;
 use tower::ServiceExt;
-use bytes::Bytes;
 
 use crate::common::{fixture_route, TOKEN_FIXTURE};
 
@@ -77,8 +74,3 @@ pub async fn unfollow_api_is_200_ok() {
     assert_eq!(response.status(), StatusCode::OK)
 }
 
-#[derive(Deserialize, Debug)]
-struct ResponseData {
-    #[serde(flatten)]
-    data: HashMap<String, Option<String>>,
-}

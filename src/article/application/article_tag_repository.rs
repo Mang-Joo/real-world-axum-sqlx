@@ -1,11 +1,10 @@
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use log::error;
-use sqlx::{Error, MySql, QueryBuilder, Transaction};
+use sqlx::{MySql, QueryBuilder, Transaction};
 
 use crate::article::domain::tag::Tag;
 use crate::config;
 use crate::config::db::DbPool;
-use crate::config::error::AppError;
 
 pub async fn save_article_and_tags(
     article_id: i64,
