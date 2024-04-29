@@ -27,7 +27,7 @@ pub enum AppError {
     ValidateError(#[from] ValidationErrors),
 
     #[error(transparent)]
-    INTERNAL_SERVER_ERROR(#[from] String),
+    InternalServerError(#[from] String),
 }
 
 impl AppError {
@@ -37,7 +37,7 @@ impl AppError {
             AppError::Forbidden => { StatusCode::FORBIDDEN }
             AppError::AnyHow(_) => { StatusCode::BAD_REQUEST }
             AppError::ValidateError(_) => { StatusCode::BAD_REQUEST }
-            AppError::INTERNAL_SERVER_ERROR(_) => { StatusCode::INTERNAL_SERVER_ERROR }
+            AppError::InternalServerError(_) => { StatusCode::INTERNAL_SERVER_ERROR }
         }
     }
 
@@ -47,7 +47,7 @@ impl AppError {
             AppError::Forbidden => { FORBIDDEN_ERROR_CODE }
             AppError::AnyHow(_) => { BAD_REQUEST }
             AppError::ValidateError(_) => { VALIDATE_ERROR_CODE }
-            AppError::INTERNAL_SERVER_ERROR(_) => { INTERNAL_SERVER_ERROR }
+            AppError::InternalServerError(_) => { INTERNAL_SERVER_ERROR }
         }
     }
 }
