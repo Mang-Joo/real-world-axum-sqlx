@@ -38,3 +38,17 @@ create table article_tag
     constraint article_tag_tag_tag_name_fk
         foreign key (tag_name) references tag (tag_name)
 );
+
+create table article_favorite
+(
+    id               bigint auto_increment,
+    article_id       bigint not null,
+    favorite_user_id bigint not null,
+    constraint article_favorite_pk
+        primary key (id),
+    constraint article_favorite_article_id_fk
+        foreign key (article_id) references article (id),
+    constraint article_favorite_users_id_fk
+        foreign key (favorite_user_id) references users (id)
+);
+

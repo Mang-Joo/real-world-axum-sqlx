@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 
 use crate::article::domain::tag::Tag;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Article {
     id: i64,
     slug: String,
@@ -10,6 +10,7 @@ pub struct Article {
     description: String,
     tag_list: Option<Vec<Tag>>,
     body: String,
+    favorite_count: i64,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     author: Author,
@@ -29,6 +30,7 @@ impl Article {
         title: String,
         description: String,
         body: String,
+        favorite_count: i64,
         tag_list: Option<Vec<Tag>>,
         author: Author,
     ) -> Self {
@@ -38,6 +40,7 @@ impl Article {
             title,
             description,
             tag_list,
+            favorite_count,
             body,
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -73,6 +76,9 @@ impl Article {
     pub fn author(&self) -> &Author {
         &self.author
     }
+    pub fn favorite_count(&self) -> i64 {
+        self.favorite_count
+    }
 }
 
 impl Author {
@@ -95,5 +101,25 @@ impl Author {
         image: Option<String>,
     ) -> Self {
         Self { id, user_name, bio, image }
+    }
+}
+
+#[derive(Clone)]
+pub struct ArticleWithFavorite {
+    article: Article,
+    is_favorite: bool,
+}
+
+impl ArticleWithFavorite {
+    pub fn new(article: Article, is_favorite: bool) -> Self {
+        Self { article, is_favorite }
+    }
+
+
+    pub fn article(&self) -> &Article {
+        &self.article
+    }
+    pub fn is_favorite(&self) -> bool {
+        self.is_favorite
     }
 }
