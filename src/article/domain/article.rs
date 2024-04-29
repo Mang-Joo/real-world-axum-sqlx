@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 
 use crate::article::domain::tag::Tag;
-use crate::user::domain::user::User;
 
 #[derive(Debug)]
 pub struct Article {
@@ -13,7 +12,15 @@ pub struct Article {
     body: String,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
-    author: User,
+    author: Author,
+}
+
+#[derive(Debug, Clone)]
+pub struct Author {
+    id: i64,
+    user_name: String,
+    bio: Option<String>,
+    image: Option<String>,
 }
 
 impl Article {
@@ -23,7 +30,7 @@ impl Article {
         description: String,
         body: String,
         tag_list: Option<Vec<Tag>>,
-        author: User,
+        author: Author,
     ) -> Self {
         Article {
             id,
@@ -63,7 +70,30 @@ impl Article {
     pub fn updated_at(&self) -> DateTime<Utc> {
         self.updated_at
     }
-    pub fn author(&self) -> &User {
+    pub fn author(&self) -> &Author {
         &self.author
+    }
+}
+
+impl Author {
+    pub fn id(&self) -> i64 {
+        self.id
+    }
+    pub fn user_name(&self) -> &str {
+        &self.user_name
+    }
+    pub fn bio(&self) -> &Option<String> {
+        &self.bio
+    }
+    pub fn image(&self) -> &Option<String> {
+        &self.image
+    }
+    pub fn new(
+        id: i64,
+        user_name: String,
+        bio: Option<String>,
+        image: Option<String>,
+    ) -> Self {
+        Self { id, user_name, bio, image }
     }
 }

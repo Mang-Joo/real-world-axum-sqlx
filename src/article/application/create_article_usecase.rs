@@ -8,7 +8,7 @@ use user::application::get_current_user_usecase;
 
 use crate::{config, user};
 use crate::article::application::article_repository;
-use crate::article::domain::article::Article;
+use crate::article::domain::article::{Article, Author};
 use crate::article::domain::tag::Tag;
 use crate::config::app_state::AppState;
 use crate::user::domain::user::User;
@@ -52,13 +52,20 @@ impl PostArticleRequest {
             Some(tag_list)
         } else { None };
 
+        let author = Author::new(
+            user.id(),
+            user.user_name().to_owned(),
+            user.bio().to_owned(),
+            user.image().to_owned(),
+        );
+
         Article::new(
             0,
             self.title.unwrap(),
             self.description.unwrap(),
             self.body.unwrap(),
             tags,
-            user,
+            author,
         )
     }
 }
