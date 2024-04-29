@@ -91,9 +91,6 @@ WHERE article.slug = ?
         .context(format!("Did not find slug {}", slug))?;
 
 
-
-
-
     todo!()
 }
 
@@ -121,9 +118,12 @@ mod tests {
     #[tokio::test]
     async fn get_single_article() {
         let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world")).await;
+
         let article = get_single_article_by_repository(
             String::from("Hello-mangjoo-"),
             &db,
         ).await;
+
+        assert_eq!(article.is_ok(), true);
     }
 }
