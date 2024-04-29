@@ -1,6 +1,7 @@
 use std::sync::Arc;
+
 use axum::Router;
-use real_world_axum_sqlx::config::app_state;
+
 use real_world_axum_sqlx::config::app_state::init_app_state;
 use real_world_axum_sqlx::create_route;
 
