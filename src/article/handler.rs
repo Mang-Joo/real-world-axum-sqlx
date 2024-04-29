@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
 use axum::{Extension, Json};
+use axum::extract::Path;
 use axum::response::IntoResponse;
 use chrono::NaiveDateTime;
 use serde::Serialize;
 
 use crate::article::application::create_article_usecase::{create_article, PostArticleRequest};
-use crate::article::domain::article::Article;
+use crate::article::application::get_single_article_usecase::get_single_article;
+use crate::article::domain::article::{Article, Author};
 use crate::config::app_state::AppState;
 use crate::config::error::AppError;
-use crate::config::validate::{JwtValidationExtractor, ValidationExtractor};
-use crate::user::application::get_current_user_usecase::get_current_user;
-use crate::user::domain::user::User;
+use crate::config::validate::{JwtValidationExtractor, OptionalAuthenticateExtractor, ValidationExtractor};
 
 pub async fn create_article_handler(
     JwtValidationExtractor(user_id): JwtValidationExtractor,
@@ -19,9 +19,24 @@ pub async fn create_article_handler(
     ValidationExtractor(request): ValidationExtractor<PostArticleRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let created_article = create_article(user_id, request, state.clone()).await?;
-    let user = get_current_user(user_id, state).await?;
 
-    let response = ArticleResponse::from_domain(created_article, user);
+    let response = ArticleResponse::from_domain(created_article, false);
+
+    Ok(Json(response))
+}
+
+pub async fn get_single_article_handler(
+    OptionalAuthenticateExtractor(user_id): OptionalAuthenticateExtractor,
+    Extension(state): Extension<Arc<AppState>>,
+    Path(slug): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let article = get_single_article(user_id, slug, state)
+        .await?;
+
+    let response = ArticleResponse::from_domain(
+        article.article().to_owned(),
+        article.is_favorite(),
+    );
 
     Ok(Json(response))
 }
@@ -43,7 +58,7 @@ struct ArticleResponse {
 impl ArticleResponse {
     fn from_domain(
         article: Article,
-        user: User,
+        is_favorite: bool,
     ) -> Self {
         let tags = if let Some(tags) = article.tag_list() {
             let tags = tags
@@ -61,9 +76,9 @@ impl ArticleResponse {
             tag_list: tags,
             created_at: article.created_at().naive_utc(),
             updated_at: article.updated_at().naive_utc(),
-            favorite: false,
-            favorite_count: 0,
-            author: AuthorResponse::from_user(user),
+            favorite: is_favorite,
+            favorite_count: article.favorite_count(),
+            author: AuthorResponse::from_user(article.author().to_owned()),
         }
     }
 }
@@ -77,11 +92,11 @@ struct AuthorResponse {
 }
 
 impl AuthorResponse {
-    fn from_user(user: User) -> Self {
+    fn from_user(author: Author) -> Self {
         AuthorResponse {
-            username: user.user_name().to_owned(),
-            bio: user.bio().to_owned(),
-            image: user.image().to_owned(),
+            username: author.user_name().to_owned(),
+            bio: author.bio().to_owned(),
+            image: author.image().to_owned(),
             following: false,
         }
     }
