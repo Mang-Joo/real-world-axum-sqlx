@@ -9,8 +9,6 @@ const BAD_REQUEST: u16 = 40000;
 const UNAUTHORIZED_ERROR_CODE: u16 = 40001;
 const VALIDATE_ERROR_CODE: u16 = 40002;
 const FORBIDDEN_ERROR_CODE: u16 = 40003;
-const INTERNAL_SERVER_ERROR: u16 = 50000;
-
 #[derive(Error, Debug)]
 pub enum AppError {
     /// Return `401 Unauthorized`
@@ -25,9 +23,6 @@ pub enum AppError {
 
     #[error(transparent)]
     ValidateError(#[from] ValidationErrors),
-
-    #[error(transparent)]
-    InternalServerError(#[from] String),
 }
 
 impl AppError {
@@ -37,7 +32,7 @@ impl AppError {
             AppError::Forbidden => { StatusCode::FORBIDDEN }
             AppError::AnyHow(_) => { StatusCode::BAD_REQUEST }
             AppError::ValidateError(_) => { StatusCode::BAD_REQUEST }
-            AppError::InternalServerError(_) => { StatusCode::INTERNAL_SERVER_ERROR }
+            // AppError::InternalServerError(_) => { StatusCode::INTERNAL_SERVER_ERROR }
         }
     }
 
@@ -47,7 +42,7 @@ impl AppError {
             AppError::Forbidden => { FORBIDDEN_ERROR_CODE }
             AppError::AnyHow(_) => { BAD_REQUEST }
             AppError::ValidateError(_) => { VALIDATE_ERROR_CODE }
-            AppError::InternalServerError(_) => { INTERNAL_SERVER_ERROR }
+            // AppError::InternalServerError(_) => { INTERNAL_SERVER_ERROR }
         }
     }
 }
