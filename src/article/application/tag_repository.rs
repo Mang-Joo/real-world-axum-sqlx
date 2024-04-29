@@ -51,9 +51,11 @@ mod tests {
         let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world"))
             .await;
 
+        let mut transaction = db.begin().await.unwrap();
+
         let tags = vec![Tag::new(String::from("Helloo")), Tag::new(String::from("Hio")), Tag::new(String::from("No"))];
 
-        let saved_tags = save_tags(&tags, &db).await
+        let saved_tags = save_tags(&tags, &mut transaction).await
             .unwrap();
 
         assert_eq!(saved_tags.len(), 3);

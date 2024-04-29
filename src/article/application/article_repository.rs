@@ -1,29 +1,28 @@
-use anyhow::anyhow;
-use chrono::{DateTime, Utc};
+use anyhow::{anyhow, Context};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use log::{error, info};
-use sqlx::{MySql, Transaction};
+use sqlx::{Encode, FromRow, MySql, Transaction, Type};
 
 use tag_repository::save_tags;
 
 use crate::article::application::article_tag_repository::save_article_and_tags;
 use crate::article::application::tag_repository;
 use crate::article::domain::article::Article;
-use crate::article::domain::tag::Tag;
 use crate::config;
 use crate::config::db::DbPool;
-use crate::user::domain::user::User;
+use crate::config::error::AppError;
 
 pub async fn save_article(
     article: Article,
     db_pool: &DbPool,
 ) -> config::Result<Article> {
-
     let mut transaction: Transaction<'_, MySql> = db_pool.begin().await.unwrap();
 
     let result = sqlx::query(r#"
-        INSERT INTO article (title, description, body, created_at, updated_at, user_id)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO article (slug, title, description, body, created_at, updated_at, user_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     "#)
+        .bind(article.slug())
         .bind(article.title())
         .bind(article.description())
         .bind(article.body())
@@ -65,44 +64,66 @@ pub async fn save_article(
     Ok(article)
 }
 
-struct ArticleEntity {
-    id: i64,
-    user_id: i64,
+pub async fn get_single_article_by_repository(
+    slug: String,
+    db_pool: &DbPool,
+) -> config::Result<Article> {
+    let article_author_entity = sqlx::query_as!(
+        ArticleAndAuthorEntity,
+        "SELECT article.id as article_id,
+       article.slug,
+       article.title,
+       article.description,
+       article.body,
+       article.created_at,
+       article.updated_at,
+       author.id    as user_id,
+       author.user_name,
+       author.bio,
+       author.image
+FROM article
+         JOIN users author on article.user_id = author.id
+WHERE article.slug = ?
+  and article.deleted = false",
+        slug
+    ).fetch_one(db_pool)
+        .await
+        .context(format!("Did not find slug {}", slug))?;
+
+
+
+
+
+    todo!()
+}
+
+#[derive(Debug, FromRow, Encode, Type)]
+struct ArticleAndAuthorEntity {
+    article_id: i64,
     slug: String,
     title: String,
     description: String,
     body: String,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    created_at: NaiveDateTime,
+    updated_at: NaiveDateTime,
+    user_id: i64,
+    user_name: String,
+    bio: Option<String>,
+    image: Option<String>,
 }
 
-impl ArticleEntity {
-    fn from_domain(article: Article) -> Self {
-        ArticleEntity {
-            id: article.id(),
-            slug: article.slug().to_string(),
-            title: article.title().to_owned(),
-            description: article.description().to_owned(),
-            body: article.body().to_owned(),
-            updated_at: article.updated_at(),
-            created_at: article.created_at(),
-            user_id: article.author().id(),
-        }
-    }
+impl ArticleAndAuthorEntity {}
 
-    fn to_domain(
-        self,
-        user: User,
-        tag_list: Option<Vec<Tag>>,
-    ) -> Article {
-        Article::new(
-            self.id,
-            self.title,
-            self.description,
-            self.body,
-            tag_list,
-            user,
-        )
+mod tests {
+    use crate::article::application::article_repository::get_single_article_by_repository;
+    use crate::config::db::init_db;
+
+    #[tokio::test]
+    async fn get_single_article() {
+        let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world")).await;
+        let article = get_single_article_by_repository(
+            String::from("Hello-mangjoo-"),
+            &db,
+        ).await;
     }
 }
-
