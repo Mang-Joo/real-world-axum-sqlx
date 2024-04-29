@@ -1,16 +1,17 @@
 use anyhow::{anyhow, Context};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::NaiveDateTime;
 use log::{error, info};
 use sqlx::{Encode, FromRow, MySql, Transaction, Type};
 
 use tag_repository::save_tags;
 
+use crate::article::application::{article_tag_repository, tag_repository};
+use crate::article::application::article_favorite_repository::count_favorite_by_article_id;
 use crate::article::application::article_tag_repository::save_article_and_tags;
-use crate::article::application::tag_repository;
-use crate::article::domain::article::Article;
+use crate::article::domain::article::{Article, Author};
+use crate::article::domain::tag::Tag;
 use crate::config;
 use crate::config::db::DbPool;
-use crate::config::error::AppError;
 
 pub async fn save_article(
     article: Article,
@@ -57,6 +58,7 @@ pub async fn save_article(
         article.title().to_owned(),
         article.description().to_owned(),
         article.body().to_owned(),
+        0,
         tags,
         article.author().to_owned(),
     );
@@ -90,8 +92,19 @@ WHERE article.slug = ?
         .await
         .context(format!("Did not find slug {}", slug))?;
 
+    let tags = article_tag_repository::get_tags_by_article_id(
+        article_author_entity.article_id,
+        db_pool,
+    ).await?;
 
-    todo!()
+    let favorite_count = count_favorite_by_article_id(
+        article_author_entity.article_id,
+        db_pool,
+    ).await?;
+
+    let article = article_author_entity.to_domain(tags, favorite_count);
+
+    Ok(article)
 }
 
 #[derive(Debug, FromRow, Encode, Type)]
@@ -109,11 +122,34 @@ struct ArticleAndAuthorEntity {
     image: Option<String>,
 }
 
-impl ArticleAndAuthorEntity {}
+impl ArticleAndAuthorEntity {
+    fn to_domain(
+        self,
+        tags: Option<Vec<Tag>>,
+        favorite_count: i64,
+    ) -> Article {
+        let author = Author::new(
+            self.user_id,
+            self.user_name,
+            self.bio,
+            self.image,
+        );
+        Article::new(
+            self.article_id,
+            self.title,
+            self.description,
+            self.body,
+            favorite_count,
+            tags,
+            author,
+        )
+    }
+}
 
 mod tests {
-    use crate::article::application::article_repository::get_single_article_by_repository;
     use crate::config::db::init_db;
+
+    use super::*;
 
     #[tokio::test]
     async fn get_single_article() {
