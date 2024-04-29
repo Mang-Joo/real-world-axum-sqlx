@@ -64,6 +64,7 @@ impl PostArticleRequest {
             self.title.unwrap(),
             self.description.unwrap(),
             self.body.unwrap(),
+            0,
             tags,
             author,
         )
