@@ -1,6 +1,6 @@
 pub mod user_handler;
 pub mod follow_handler;
-mod user_repository;
+pub mod user_repository;
 mod login_usecase;
 mod registration_usecase;
 pub mod get_current_user_usecase;

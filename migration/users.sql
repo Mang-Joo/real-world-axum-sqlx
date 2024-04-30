@@ -8,9 +8,9 @@ create table users
     email             VARCHAR(50)  not null,
     password          varchar(500) not null,
     bio               varchar(500) null,
-    image             varchar(50)  null,
-    registration_date DATE         not null,
-    modified_date     DATE         not null,
+    image             varchar(50) null,
+    registration_date datetime     not null,
+    modified_date     datetime     not null,
     deleted           bool         not null,
     constraint users_pk
         primary key (id)

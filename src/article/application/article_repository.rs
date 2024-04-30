@@ -1,17 +1,21 @@
 use anyhow::{anyhow, Context};
 use chrono::NaiveDateTime;
 use log::{error, info};
-use sqlx::{Encode, FromRow, MySql, Transaction, Type};
+use sqlx::{Encode, Execute, FromRow, MySql, QueryBuilder, Transaction, Type};
+use sqlx::query::Query;
 
 use tag_repository::save_tags;
 
 use crate::article::application::{article_tag_repository, tag_repository};
 use crate::article::application::article_favorite_repository::count_favorite_by_article_id;
 use crate::article::application::article_tag_repository::save_article_and_tags;
-use crate::article::domain::article::{Article, Author};
+use crate::article::application::get_articles_default_usecase::ListArticleRequest;
+use crate::article::domain::article::{Article, ArticleWithFavorite, Author};
 use crate::article::domain::tag::Tag;
 use crate::config;
 use crate::config::db::DbPool;
+use crate::user::application::get_current_user_usecase::get_current_user;
+use crate::user::application::user_repository::find_by_user_name;
 
 pub async fn save_article(
     article: Article,
@@ -84,7 +88,7 @@ pub async fn get_single_article_by_repository(
        author.bio,
        author.image
 FROM article
-         JOIN users author on article.user_id = author.id
+        JOIN users author on article.user_id = author.id
 WHERE article.slug = ?
   and article.deleted = false",
         slug
@@ -105,6 +109,62 @@ WHERE article.slug = ?
     let article = article_author_entity.to_domain(tags, favorite_count);
 
     Ok(article)
+}
+
+pub async fn get_default_articles_by_repository(
+    article_query: ListArticleRequest,
+    db_pool: &DbPool,
+) -> config::Result<Vec<Article>> {
+    let mut query_builder = QueryBuilder::new(r#"
+    SELECT article.id as article_id,
+       article.slug,
+       article.title,
+       article.description,
+       article.body,
+       article.created_at,
+       article.updated_at,
+       author.id    as user_id,
+       author.user_name,
+       author.bio,
+       author.image
+FROM article
+         JOIN users author on article.user_id = author.id
+         JOIN article_tag tag on article.id = tag.article_id
+  WHERE article.deleted = false
+    "#);
+
+
+    if let Some(tag) = article_query.tag() {
+        query_builder.push(format!("AND tag.tag_name = '{}'", tag));
+
+    };
+
+    if let Some(author) = article_query.author() {
+        query_builder.push("AND author.user_name = ")
+            .push_bind(author);
+    };
+
+    if let Some(favorite_user) = article_query.favorited() {
+        let user = find_by_user_name(favorite_user, db_pool)
+            .await?;
+        query_builder.push("AND user_id = ")
+            .push_bind(user.id());
+    };
+
+    let sql = query_builder.build().sql();
+    println!("sql {}", sql);
+    let result = sqlx::query_as::<_, ArticleAndAuthorEntity>(sql)
+        .fetch_all(db_pool)
+        .await
+        .map_err(|err| {
+            error!("Failed get articles Error : {}", err.to_string());
+            println!("error {}", err.to_string());
+            anyhow!("Failed get articles")
+        })?;
+    println!("vec =  {:?}", result);
+
+
+    Err(anyhow!("fawjop"))
 }
 
 #[derive(Debug, FromRow, Encode, Type)]
@@ -161,5 +221,23 @@ mod tests {
         ).await;
 
         assert_eq!(article.is_ok(), true);
+    }
+
+    #[tokio::test]
+    async fn get_list_article() {
+        let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world")).await;
+
+        let request = ListArticleRequest::new(
+            Some(String::from("nooo")),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        let result = get_default_articles_by_repository(
+            request,
+            &db,
+        ).await.is_err();
     }
 }

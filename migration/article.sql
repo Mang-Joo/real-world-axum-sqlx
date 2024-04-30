@@ -1,4 +1,7 @@
 drop table tag;
+drop table article_tag;
+drop table article_favorite;
+drop table article;
 
 create table tag
 (

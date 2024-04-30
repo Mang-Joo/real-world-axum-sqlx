@@ -11,7 +11,7 @@ mod common;
 #[tokio::test]
 pub async fn save_article_200_ok() {
     let request_body = json!({
-        "title": "Hello mangjoo ",
+        "title": "Hello mangjoo",
         "description": "Test Description",
         "body": "content body",
         "tagList": ["mangjoo", "test", "test"]
