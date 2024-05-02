@@ -12,7 +12,7 @@ create table tag
 
 create table article
 (
-    id          bigint auto_increment primary key,
+    id          BIGSERIAL primary key,
     user_id     bigint               not null,
     title       varchar(100)         not null,
     slug        varchar(150)         not null,
@@ -31,11 +31,9 @@ create table article
 
 create table article_tag
 (
-    id         bigint auto_increment,
+    id         BIGSERIAL primary key,
     article_id bigint      not null,
     tag_name   varchar(50) not null,
-    constraint article_tag_pk
-        primary key (id),
     constraint article_tag_article_id_fk
         foreign key (article_id) references article (id),
     constraint article_tag_tag_tag_name_fk
@@ -44,14 +42,11 @@ create table article_tag
 
 create table article_favorite
 (
-    id               bigint auto_increment,
+    id               BIGSERIAL primary key,
     article_id       bigint not null,
     favorite_user_id bigint not null,
-    constraint article_favorite_pk
-        primary key (id),
     constraint article_favorite_article_id_fk
         foreign key (article_id) references article (id),
     constraint article_favorite_users_id_fk
         foreign key (favorite_user_id) references users (id)
 );
-
