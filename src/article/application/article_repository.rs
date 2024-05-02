@@ -1,7 +1,10 @@
+use std::fmt::format;
+
 use anyhow::{anyhow, Context};
 use chrono::NaiveDateTime;
 use log::{error, info};
-use sqlx::{Encode, Execute, FromRow, MySql, QueryBuilder, Transaction, Type};
+use sqlx::{Encode, Execute, Postgres, QueryBuilder, Row, Transaction};
+use sqlx::FromRow;
 use sqlx::query::Query;
 
 use tag_repository::save_tags;
@@ -21,11 +24,11 @@ pub async fn save_article(
     article: Article,
     db_pool: &DbPool,
 ) -> config::Result<Article> {
-    let mut transaction: Transaction<'_, MySql> = db_pool.begin().await.unwrap();
+    let mut transaction: Transaction<'_, Postgres> = db_pool.begin().await.unwrap();
 
     let result = sqlx::query(r#"
         INSERT INTO article (slug, title, description, body, created_at, updated_at, user_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7) returning id
     "#)
         .bind(article.slug())
         .bind(article.title())
@@ -34,17 +37,17 @@ pub async fn save_article(
         .bind(article.created_at())
         .bind(article.updated_at())
         .bind(article.author().id())
-        .execute(&mut *transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
-    let inserted_id = result.last_insert_id() as i64;
+    let inserted_id = result.get::<i64, usize>(0);
 
     let tags = if let Some(tags) = article.tag_list() {
         info!("tags {:?}", tags);
 
         let tags = save_tags(tags, &mut transaction).await?;
-
         save_article_and_tags(inserted_id, &tags, &mut transaction).await?;
+
         Some(tags)
     } else { None };
 
@@ -77,20 +80,20 @@ pub async fn get_single_article_by_repository(
     let article_author_entity = sqlx::query_as!(
         ArticleAndAuthorEntity,
         "SELECT article.id as article_id,
-       article.slug,
-       article.title,
-       article.description,
-       article.body,
-       article.created_at,
-       article.updated_at,
-       author.id    as user_id,
-       author.user_name,
-       author.bio,
-       author.image
-FROM article
-        JOIN users author on article.user_id = author.id
-WHERE article.slug = ?
-  and article.deleted = false",
+            article.slug,
+            article.title,
+            article.description,
+            article.body,
+            article.created_at,
+            article.updated_at,
+            author.id    as user_id,
+            author.user_name,
+            author.bio,
+            author.image
+from article
+        join users author on article.user_id = author.id
+where article.slug = $1
+and article.deleted = false",
         slug
     ).fetch_one(db_pool)
         .await
@@ -115,59 +118,65 @@ pub async fn get_default_articles_by_repository(
     article_query: ListArticleRequest,
     db_pool: &DbPool,
 ) -> config::Result<Vec<Article>> {
-    let mut query_builder = QueryBuilder::new(r#"
-    SELECT article.id as article_id,
-       article.slug,
-       article.title,
-       article.description,
-       article.body,
-       article.created_at,
-       article.updated_at,
-       author.id    as user_id,
-       author.user_name,
-       author.bio,
-       author.image
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(r#"
+SELECT article.id as article_id,
+    article.slug,
+    article.title,
+    article.description,
+    article.body,
+    article.created_at,
+    article.updated_at,
+    author.id    as user_id,
+    author.user_name,
+    author.bio,
+    author.image
 FROM article
-         JOIN users author on article.user_id = author.id
-         JOIN article_tag tag on article.id = tag.article_id
-  WHERE article.deleted = false
+JOIN users author on article.user_id = author.id
+JOIN article_tag tag on article.id = tag.article_id
+WHERE article.deleted = false
     "#);
 
 
     if let Some(tag) = article_query.tag() {
-        query_builder.push(format!("AND tag.tag_name = '{}'", tag));
-
+        println!("tag {tag}");
+        query_builder
+            .push("AND tag.tag_name = ")
+            .push_bind(tag);
     };
 
     if let Some(author) = article_query.author() {
-        query_builder.push("AND author.user_name = ")
+        query_builder
+            .push("AND author.user_name = ")
             .push_bind(author);
     };
 
     if let Some(favorite_user) = article_query.favorited() {
         let user = find_by_user_name(favorite_user, db_pool)
             .await?;
-        query_builder.push("AND user_id = ")
+        query_builder
+            .push("AND user_id = ")
             .push_bind(user.id());
     };
 
-    let sql = query_builder.build().sql();
-    println!("sql {}", sql);
-    let result = sqlx::query_as::<_, ArticleAndAuthorEntity>(sql)
+    query_builder
+        .push(" LIMIT ")
+        .push_bind(article_query.limit().unwrap_or(20))
+        .push(" OFFSET ")
+        .push_bind(article_query.offset().unwrap_or(0));
+
+    let result = query_builder
+        .build_query_as::<ArticleAndAuthorEntity>()
         .fetch_all(db_pool)
         .await
         .map_err(|err| {
             error!("Failed get articles Error : {}", err.to_string());
-            println!("error {}", err.to_string());
             anyhow!("Failed get articles")
         })?;
-    println!("vec =  {:?}", result);
-
 
     Err(anyhow!("fawjop"))
 }
 
-#[derive(Debug, FromRow, Encode, Type)]
+#[derive(Debug, FromRow, Encode)]
 struct ArticleAndAuthorEntity {
     article_id: i64,
     slug: String,
@@ -207,13 +216,13 @@ impl ArticleAndAuthorEntity {
 }
 
 mod tests {
+    use crate::article::application::article_repository::{get_default_articles_by_repository, get_single_article_by_repository};
+    use crate::article::application::get_articles_default_usecase::ListArticleRequest;
     use crate::config::db::init_db;
-
-    use super::*;
 
     #[tokio::test]
     async fn get_single_article() {
-        let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world")).await;
+        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres")).await;
 
         let article = get_single_article_by_repository(
             String::from("Hello-mangjoo-"),
@@ -225,7 +234,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_list_article() {
-        let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world")).await;
+        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres")).await;
 
         let request = ListArticleRequest::new(
             Some(String::from("nooo")),
