@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use log::error;
-use sqlx::{MySql, QueryBuilder, Transaction};
+use sqlx::{Postgres, QueryBuilder, Transaction};
 
 use crate::article::domain::tag::Tag;
 use crate::config;
@@ -9,7 +9,7 @@ use crate::config::db::DbPool;
 pub async fn save_article_and_tags(
     article_id: i64,
     tags: &Vec<Tag>,
-    db_pool: &mut Transaction<'_, MySql>,
+    db_pool: &mut Transaction<'_, Postgres>,
 ) -> config::Result<()> {
     QueryBuilder::new("INSERT INTO article_tag (article_id, tag_name)")
         .push_values(
@@ -39,7 +39,7 @@ pub async fn get_tags_by_article_id(
         TagEntity,
         "SELECT tag_name
         FROM article_tag
-        WHERE article_id = ?",
+        WHERE article_id = $1",
         article_id
     ).fetch_all(db_pool)
         .await;

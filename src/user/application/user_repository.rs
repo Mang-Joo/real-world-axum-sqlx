@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context};
 use chrono::NaiveDateTime;
 use log::error;
-use sqlx::{Encode, FromRow, Type};
+use sqlx::{Encode, FromRow, Row, Type};
 
 use crate::config;
 use crate::config::db::DbPool;
@@ -11,7 +11,7 @@ pub async fn find_by_email(email: &String, db_pool: &DbPool) -> config::Result<U
     let user = sqlx::query_as!(
         UserEntity,
         "SELECT id, email, password, user_name, bio, image, registration_date, modified_date
-        FROM users WHERE email = ? and deleted = false",
+        FROM users WHERE email = $1 and deleted = false",
         email
     ).fetch_optional(db_pool)
         .await
@@ -29,7 +29,7 @@ pub async fn find_by_user_name(user_name: &String, db_pool: &DbPool) -> config::
     let user = sqlx::query_as!(
         UserEntity,
         "SELECT id, email, password, user_name, bio, image, registration_date, modified_date
-        FROM users WHERE user_name = ? and deleted = false",
+        FROM users WHERE user_name = $1 and deleted = false",
         user_name
     ).fetch_optional(db_pool)
         .await
@@ -47,8 +47,8 @@ pub async fn find_by_id(id: i64, db_pool: &DbPool) -> config::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
         "SELECT id, email, password, user_name, bio, image, registration_date, modified_date
-        FROM users WHERE id = ? and deleted = false",
-        id
+        FROM users WHERE id = $1 and deleted = false",
+        id as i32
     ).fetch_optional(db_pool)
         .await
         .context(format!("Failed to find user with email: {}", id))?;
@@ -98,7 +98,7 @@ pub async fn update_user_entity(user: &User, db_pool: &DbPool) -> config::Result
 pub async fn save_user(user: User, db_pool: &DbPool) -> config::Result<User> {
     let row = sqlx::query(
         "INSERT INTO users (email, password, user_name, bio, image, registration_date, modified_date, deleted)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) returning id
         ")
         .bind(user.email())
         .bind(user.password())
@@ -108,7 +108,7 @@ pub async fn save_user(user: User, db_pool: &DbPool) -> config::Result<User> {
         .bind(user.registration_date().naive_utc())
         .bind(user.modified_date().naive_utc())
         .bind(false)
-        .execute(db_pool)
+        .fetch_one(db_pool)
         .await;
 
     let row = match row {
@@ -120,7 +120,7 @@ pub async fn save_user(user: User, db_pool: &DbPool) -> config::Result<User> {
     };
 
     let user = User::new(
-        row.last_insert_id() as i64,
+        row.get::<i64, usize>(0),
         user.email().to_owned(),
         user.password().to_owned(),
         user.user_name().to_owned(),
@@ -133,7 +133,7 @@ pub async fn save_user(user: User, db_pool: &DbPool) -> config::Result<User> {
     Ok(user)
 }
 
-#[derive(FromRow, Encode, Type)]
+#[derive(FromRow, Encode)]
 struct UserEntity {
     id: i64,
     email: String,

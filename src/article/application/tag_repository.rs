@@ -1,18 +1,19 @@
 use anyhow::anyhow;
 use log::{error, info};
-use sqlx::{MySql, QueryBuilder, Transaction};
+use sqlx::{Postgres, QueryBuilder, Transaction};
 
 use crate::article::domain::tag::Tag;
 use crate::config;
 
 pub async fn save_tags(
     tags: &Vec<Tag>,
-    db_pool: &mut Transaction<'_, MySql>,
+    db_pool: &mut Transaction<'_, Postgres>,
 ) -> config::Result<Vec<Tag>> {
-    QueryBuilder::new("INSERT IGNORE INTO tag (tag_name)")
+    QueryBuilder::new("INSERT INTO tag (tag_name)")
         .push_values(tags, |mut builder, tag| {
             builder.push_bind(tag.tag().to_owned());
         })
+        .push("ON CONFLICT DO NOTHING")
         .build()
         .fetch_all(&mut **db_pool)
         .await
