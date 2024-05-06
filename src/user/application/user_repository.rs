@@ -30,8 +30,8 @@ pub async fn find_by_email(email: &String, db_pool: &DbPool) -> config::Result<U
 pub async fn find_by_user_name(user_name: &String, db_pool: &DbPool) -> config::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
-        "SELECT id, email, password, user_name, bio, image, registration_date, modified_date
-        FROM users WHERE user_name = $1 and deleted = false",
+        r#"SELECT id, email, password, user_name, bio, image, registration_date, modified_date
+        FROM users WHERE user_name = $1 and deleted = false"#,
         user_name
     ).fetch_optional(db_pool)
         .await
@@ -48,8 +48,10 @@ pub async fn find_by_user_name(user_name: &String, db_pool: &DbPool) -> config::
 pub async fn find_by_id(id: i64, db_pool: &DbPool) -> config::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
-        "SELECT id, email, password, user_name, bio, image, registration_date, modified_date
-        FROM users WHERE id = $1 and deleted = false",
+        r#"
+        SELECT id, email, password, user_name, bio, image, registration_date, modified_date
+        FROM users WHERE id = $1 and deleted = false
+        "#,
         id as i32
     ).fetch_optional(db_pool)
         .await
