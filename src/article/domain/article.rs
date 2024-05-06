@@ -104,7 +104,7 @@ impl Author {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ArticleWithFavorite {
     article: Article,
     is_favorite: bool,
