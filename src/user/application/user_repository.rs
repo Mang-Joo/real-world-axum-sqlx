@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context};
 use chrono::NaiveDateTime;
 use log::error;
-use sqlx::{Encode, FromRow, Row, Type};
+use sqlx::{Encode, FromRow, Row};
 
 use crate::config;
 use crate::config::db::DbPool;
@@ -10,8 +10,10 @@ use crate::user::domain::user::User;
 pub async fn find_by_email(email: &String, db_pool: &DbPool) -> config::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
-        "SELECT id, email, password, user_name, bio, image, registration_date, modified_date
-        FROM users WHERE email = $1 and deleted = false",
+        r#"
+        SELECT id, email, password, user_name, bio, image, registration_date, modified_date
+        FROM users WHERE email = $1 and deleted = false
+        "#,
         email
     ).fetch_optional(db_pool)
         .await
@@ -181,7 +183,7 @@ mod tests {
 
     #[tokio::test]
     async fn find_email_test() {
-        let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world")).await;
+        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres")).await;
         let user = find_by_email(&String::from("Hi"), &db)
             .await;
 
@@ -192,7 +194,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_user_test() {
-        let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world"))
+        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres"))
             .await;
         let user = find_by_id(1, &db)
             .await
