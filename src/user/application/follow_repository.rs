@@ -74,7 +74,7 @@ mod test {
 
     #[tokio::test]
     async fn is_follow_user_false_test() {
-        let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world"))
+        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres"))
             .await;
 
         let user = find_by_id(1, &db)
@@ -88,7 +88,7 @@ mod test {
 
     #[tokio::test]
     async fn save_following_test() {
-        let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world"))
+        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres"))
             .await;
 
         let result = save_follow(1, 2, &db).await;
@@ -98,7 +98,7 @@ mod test {
 
     #[tokio::test]
     async fn unfollow_success_test() {
-        let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world"))
+        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres"))
             .await;
 
         let result = unfollow(1, 2, &db).await;

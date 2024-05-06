@@ -37,7 +37,7 @@ mod tests {
 
     #[tokio::test]
     async fn save_tags_test() {
-        let db = init_db(String::from("mysql://root:akdwn1212!@146.56.115.136:3306/real_world"))
+        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres"))
             .await;
 
         let mut transaction = db.begin().await.unwrap();
