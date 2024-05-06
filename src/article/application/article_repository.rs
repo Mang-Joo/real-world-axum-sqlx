@@ -1,44 +1,42 @@
-use std::fmt::format;
+use std::sync::Arc;
 
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use chrono::NaiveDateTime;
 use log::{error, info};
-use sqlx::{Encode, Execute, Postgres, QueryBuilder, Row, Transaction};
+use sqlx::{Encode, Postgres, Row, Transaction};
 use sqlx::FromRow;
-use sqlx::query::Query;
 
-use tag_repository::save_tags;
-
-use crate::article::application::{article_tag_repository, tag_repository};
-use crate::article::application::article_favorite_repository::count_favorite_by_article_id;
 use crate::article::application::article_tag_repository::save_article_and_tags;
 use crate::article::application::get_articles_default_usecase::ListArticleRequest;
+use crate::article::application::tag_repository::save_tags;
 use crate::article::domain::article::{Article, ArticleWithFavorite, Author};
 use crate::article::domain::tag::Tag;
 use crate::config;
-use crate::config::db::DbPool;
-use crate::user::application::get_current_user_usecase::get_current_user;
+use crate::config::app_state::AppState;
 use crate::user::application::user_repository::find_by_user_name;
 
 pub async fn save_article(
     article: Article,
-    db_pool: &DbPool,
+    app_state: Arc<AppState>
 ) -> config::Result<Article> {
+    let db_pool = &app_state.pool;
     let mut transaction: Transaction<'_, Postgres> = db_pool.begin().await.unwrap();
 
-    let result = sqlx::query(r#"
+    let result = sqlx::query(
+        r#"
         INSERT INTO article (slug, title, description, body, created_at, updated_at, user_id)
         VALUES ($1, $2, $3, $4, $5, $6, $7) returning id
-    "#)
-        .bind(article.slug())
-        .bind(article.title())
-        .bind(article.description())
-        .bind(article.body())
-        .bind(article.created_at())
-        .bind(article.updated_at())
-        .bind(article.author().id())
-        .fetch_one(&mut *transaction)
-        .await?;
+    "#,
+    )
+    .bind(article.slug())
+    .bind(article.title())
+    .bind(article.description())
+    .bind(article.body())
+    .bind(article.created_at())
+    .bind(article.updated_at())
+    .bind(article.author().id())
+    .fetch_one(&mut *transaction)
+    .await?;
 
     let inserted_id = result.get::<i64, usize>(0);
 
@@ -49,16 +47,14 @@ pub async fn save_article(
         save_article_and_tags(inserted_id, &tags, &mut transaction).await?;
 
         Some(tags)
-    } else { None };
+    } else {
+        None
+    };
 
-    let _ = transaction
-        .commit()
-        .await
-        .map_err(|err| {
-            error!("Transaction commit error: {}", err);
-            anyhow!("Transaction failed")
-        });
-
+    let _ = transaction.commit().await.map_err(|err| {
+        error!("Transaction commit error: {}", err);
+        anyhow!("Transaction failed")
+    });
 
     let article = Article::new(
         inserted_id as i64,
@@ -75,11 +71,12 @@ pub async fn save_article(
 
 pub async fn get_single_article_by_repository(
     slug: String,
-    db_pool: &DbPool,
+    app_state: Arc<AppState>,
 ) -> config::Result<Article> {
     let article_author_entity = sqlx::query_as!(
-        ArticleAndAuthorEntity,
-        "SELECT article.id as article_id,
+        SingleArticleEntity,
+        "
+        SELECT article.id as article_id,
             article.slug,
             article.title,
             article.description,
@@ -89,95 +86,108 @@ pub async fn get_single_article_by_repository(
             author.id    as user_id,
             author.user_name,
             author.bio,
-            author.image
-from article
-        join users author on article.user_id = author.id
-where article.slug = $1
-and article.deleted = false",
+            author.image,
+            array_agg(tag.tag_name)    tags,
+            COUNT(favorite.article_id) favorite_count
+        from article
+            join users author on article.user_id = author.id
+            LEFT JOIN article_tag tag on article.id = tag.article_id
+            LEFT JOIN article_favorite favorite on article.id = favorite.article_id
+        where article.slug = $1
+            and article.deleted = false
+        GROUP BY article.id, author.id, created_at
+",
         slug
-    ).fetch_one(db_pool)
-        .await
-        .context(format!("Did not find slug {}", slug))?;
+    )
+    .fetch_optional(&app_state.pool)
+    .await
+    .map_err(|err| {
+        println!("{}", err.to_string());
+        anyhow!(format!("Did not find slug {}", slug))
+    })?;
 
-    let tags = article_tag_repository::get_tags_by_article_id(
-        article_author_entity.article_id,
-        db_pool,
-    ).await?;
-
-    let favorite_count = count_favorite_by_article_id(
-        article_author_entity.article_id,
-        db_pool,
-    ).await?;
-
-    let article = article_author_entity.to_domain(tags, favorite_count);
-
-    Ok(article)
+    if let Some(article_entity) = article_author_entity {
+        info!("Find success entity {:?}", article_entity);
+        Ok(article_entity.to_domain())
+    } else {
+        error!("Failed get article {}", slug);
+        Err(anyhow!("Failed find article"))
+    }
 }
 
 pub async fn get_default_articles_by_repository(
+    user_id: Option<i64>,
     article_query: ListArticleRequest,
-    db_pool: &DbPool,
-) -> config::Result<Vec<Article>> {
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(r#"
+    app_state: Arc<AppState>,
+) -> config::Result<Vec<ArticleWithFavorite>> {
+    let favorite_id = if let Some(favorite_user) = article_query.favorited() {
+        let user = find_by_user_name(favorite_user, &app_state.pool).await?;
+        Some(user.id())
+    } else {
+        None
+    };
+
+    let result = sqlx::query_as!(
+        MultipleArticleEntity,
+        r#"
 SELECT article.id as article_id,
-    article.slug,
-    article.title,
-    article.description,
-    article.body,
-    article.created_at,
-    article.updated_at,
-    author.id    as user_id,
-    author.user_name,
-    author.bio,
-    author.image
+       article.slug,
+       article.title,
+       article.description,
+       article.body,
+       article.created_at,
+       article.updated_at,
+       author.id    as user_id,
+       author.user_name,
+       author.bio,
+       author.image,
+       array_agg(tag.tag_name) as tags,
+       COUNT(favorite.article_id) favorite_count,
+       exists(SELECT 1
+              FROM article_favorite
+              WHERE article_id = article.id
+                AND favorite_user_id = $1) "is_favorite!"
 FROM article
-JOIN users author on article.user_id = author.id
-JOIN article_tag tag on article.id = tag.article_id
+         JOIN users author on article.user_id = author.id
+         LEFT JOIN article_tag tag on article.id = tag.article_id
+         LEFT JOIN article_favorite favorite on article.id = favorite.article_id
 WHERE article.deleted = false
-    "#);
+and ($2::text is null or article.id IN (SELECT article_id
+                                FROM article_tag
+                                WHERE tag_name = $2))
+and ($3::text is null or author.user_name = $3)
+and ($4::bigint is null or favorite.favorite_user_id = $4)
+    GROUP BY article.id, author.id, created_at
+    ORDER BY created_at DESC
+    LIMIT $5 OFFSET $6
+    "#,
+        user_id.unwrap_or(0),
+        article_query.tag().to_owned(),
+        article_query.author().to_owned(),
+        favorite_id,
+        article_query.limit().unwrap_or(20) as i64,
+        article_query.offset().unwrap_or(0) as i64,
+    )
+    .fetch_all(&app_state.pool)
+    .await
+    .map_err(|err| {
+        error!("Failed get articles Error : {}", err.to_string());
+        println!("err {}", err.to_string());
+        anyhow!("Failed get articles")
+    })?;
 
+    let articles = result
+        .into_iter()
+        .map(|article_entity| article_entity.to_domain())
+        .collect::<Vec<ArticleWithFavorite>>();
 
-    if let Some(tag) = article_query.tag() {
-        println!("tag {tag}");
-        query_builder
-            .push("AND tag.tag_name = ")
-            .push_bind(tag);
-    };
+    info!("Get succeed default articles count : {}", articles.len());
 
-    if let Some(author) = article_query.author() {
-        query_builder
-            .push("AND author.user_name = ")
-            .push_bind(author);
-    };
-
-    if let Some(favorite_user) = article_query.favorited() {
-        let user = find_by_user_name(favorite_user, db_pool)
-            .await?;
-        query_builder
-            .push("AND user_id = ")
-            .push_bind(user.id());
-    };
-
-    query_builder
-        .push(" LIMIT ")
-        .push_bind(article_query.limit().unwrap_or(20))
-        .push(" OFFSET ")
-        .push_bind(article_query.offset().unwrap_or(0));
-
-    let result = query_builder
-        .build_query_as::<ArticleAndAuthorEntity>()
-        .fetch_all(db_pool)
-        .await
-        .map_err(|err| {
-            error!("Failed get articles Error : {}", err.to_string());
-            anyhow!("Failed get articles")
-        })?;
-
-    Err(anyhow!("fawjop"))
+    Ok(articles)
 }
 
 #[derive(Debug, FromRow, Encode)]
-struct ArticleAndAuthorEntity {
+struct MultipleArticleEntity {
     article_id: i64,
     slug: String,
     title: String,
@@ -189,26 +199,75 @@ struct ArticleAndAuthorEntity {
     user_name: String,
     bio: Option<String>,
     image: Option<String>,
+    tags: Option<Vec<String>>,
+    favorite_count: Option<i64>,
+    is_favorite: bool,
 }
 
-impl ArticleAndAuthorEntity {
-    fn to_domain(
-        self,
-        tags: Option<Vec<Tag>>,
-        favorite_count: i64,
-    ) -> Article {
-        let author = Author::new(
-            self.user_id,
-            self.user_name,
-            self.bio,
-            self.image,
+impl MultipleArticleEntity {
+    fn to_domain(self) -> ArticleWithFavorite {
+        let author = Author::new(self.user_id, self.user_name, self.bio, self.image);
+
+        let tags = if let Some(tags) = self.tags {
+            let tags = tags
+                .into_iter()
+                .map(|tag| Tag::new(tag))
+                .collect::<Vec<Tag>>();
+            Some(tags)
+        } else {
+            None
+        };
+
+        let article = Article::new(
+            self.article_id,
+            self.title,
+            self.description,
+            self.body,
+            self.favorite_count.unwrap(),
+            tags,
+            author,
         );
+
+        ArticleWithFavorite::new(article, self.is_favorite)
+    }
+}
+
+#[derive(Debug, FromRow, Encode)]
+struct SingleArticleEntity {
+    article_id: i64,
+    slug: String,
+    title: String,
+    description: String,
+    body: String,
+    created_at: NaiveDateTime,
+    updated_at: NaiveDateTime,
+    user_id: i64,
+    user_name: String,
+    bio: Option<String>,
+    image: Option<String>,
+    tags: Option<Vec<String>>,
+    favorite_count: Option<i64>,
+}
+impl SingleArticleEntity {
+    fn to_domain(self) -> Article {
+        let author = Author::new(self.user_id, self.user_name, self.bio, self.image);
+
+        let tags = if let Some(tags) = self.tags {
+            let tags = tags
+                .into_iter()
+                .map(|tag| Tag::new(tag))
+                .collect::<Vec<Tag>>();
+            Some(tags)
+        } else {
+            None
+        };
+
         Article::new(
             self.article_id,
             self.title,
             self.description,
             self.body,
-            favorite_count,
+            self.favorite_count.unwrap(),
             tags,
             author,
         )
@@ -216,37 +275,36 @@ impl ArticleAndAuthorEntity {
 }
 
 mod tests {
-    use crate::article::application::article_repository::{get_default_articles_by_repository, get_single_article_by_repository};
+    use std::sync::Arc;
+
+    use crate::article::application::article_repository::{
+        get_default_articles_by_repository, get_single_article_by_repository,
+    };
     use crate::article::application::get_articles_default_usecase::ListArticleRequest;
-    use crate::config::db::init_db;
+    use crate::config::app_state::init_app_state;
 
     #[tokio::test]
     async fn get_single_article() {
-        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres")).await;
+        let app_state = init_app_state().await;
 
         let article = get_single_article_by_repository(
-            String::from("Hello-mangjoo-"),
-            &db,
-        ).await;
+            String::from("Hello-mangjoo-2478"),
+            Arc::new(app_state),
+        )
+        .await;
 
         assert_eq!(article.is_ok(), true);
     }
 
     #[tokio::test]
     async fn get_list_article() {
-        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres")).await;
+        let request =
+            ListArticleRequest::new(Some(String::from("mangjoo")), None, None, None, None);
 
-        let request = ListArticleRequest::new(
-            Some(String::from("nooo")),
-            None,
-            None,
-            None,
-            None,
-        );
+        let result =
+            get_default_articles_by_repository(None, request, Arc::new(init_app_state().await))
+                .await;
 
-        let result = get_default_articles_by_repository(
-            request,
-            &db,
-        ).await.is_err();
+        assert_eq!(result.is_ok(), true);
     }
 }
