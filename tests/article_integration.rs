@@ -93,3 +93,38 @@ async fn get_single_article_200_ok() {
 
     assert_eq!(data, slug);
 }
+
+#[tokio::test]
+async fn get_feed_article_200_ok() {
+    let request = Request::builder()
+        .uri(format!("/api/articles/feed{}", ""))
+        .method(Method::GET)
+        .header("Content-Type", "application/json")
+        .header("Authorization", common::TOKEN_FIXTURE)
+        .body(Body::empty())
+        .unwrap();
+
+    let response: Response = fixture_route()
+        .await
+        .oneshot(request)
+        .await
+        .unwrap();
+
+    let byte = to_bytes(response.into_body(), usize::MAX).await
+        .expect("");
+
+    let result: ResponseData = serde_json::from_slice(&byte).unwrap();
+
+    println!("result {:?}", result);
+
+    let data = result.data
+        .get("articlesCount").unwrap();
+
+    let data = match data {
+        None => { Value::Null }
+        Some(data) => { data.to_owned() }
+    };
+
+    assert_eq!(data, 1);
+}
+
