@@ -11,14 +11,18 @@ pub async fn is_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) ->
             SELECT EXISTS(
                 SELECT 1
                 FROM user_follow
-                WHERE follower_id = ?
-                AND following_id = ?
+                WHERE follower_id = $1
+                AND following_id = $2
             )
     ")
         .bind(follower_id)
         .bind(following_id)
         .fetch_one(db_pool)
         .await
+        .map_err(|err| {
+            error!("follow checking error {}", err.to_string());
+            false
+        })
         .unwrap()
         .get(0);
 
@@ -30,7 +34,7 @@ pub async fn is_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) ->
 pub async fn save_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) -> config::Result<bool> {
     let _ = sqlx::query("
     INSERT INTO user_follow (follower_id, following_id, created_at, updated_at, deleted)
-    VALUES (?, ?, ? , ?, ?)
+    VALUES ($1, $2, $3 , $4, $5)
     ")
         .bind(follower_id)
         .bind(following_id)
