@@ -10,8 +10,9 @@ use crate::article::application::create_article_usecase::{create_article, PostAr
 use crate::article::application::get_articles_default_usecase::{
     get_article_default, ListArticleRequest,
 };
+use crate::article::application::get_feed_article_usecase::{FeedArticleRequest, get_feed_articles};
 use crate::article::application::get_single_article_usecase::get_single_article;
-use crate::article::domain::article::{Article, Author};
+use crate::article::domain::article::{Article, ArticleWithFavorite, Author};
 use crate::config::app_state::AppState;
 use crate::config::error::AppError;
 use crate::config::validate::{
@@ -49,18 +50,40 @@ pub async fn get_default_articles_handler(
 ) -> Result<impl IntoResponse, AppError> {
     let articles = get_article_default(user_id, query, Arc::clone(&state)).await?;
 
-    let article_response = articles
+    let article_response = to_article_response(articles);
+
+    let response = MultipleArticleResponse::new(article_response);
+
+    Ok(Json(response))
+}
+
+pub async fn get_feed_articles_handler(
+    JwtValidationExtractor(user_id): JwtValidationExtractor,
+    Query(query): Query<FeedArticleRequest>,
+    Extension(state): Extension<Arc<AppState>>,
+) -> Result<impl IntoResponse, AppError> {
+    let articles = get_feed_articles(
+        user_id,
+        query,
+        Arc::clone(&state),
+    ).await?;
+
+    let article_response = to_article_response(articles);
+
+    let response = MultipleArticleResponse::new(article_response);
+
+    Ok(Json(response))
+}
+
+fn to_article_response(articles: Vec<ArticleWithFavorite>) -> Vec<ArticleResponse> {
+    articles
         .into_iter()
         .map(|article| {
             let response =
                 ArticleResponse::from_domain(article.article().to_owned(), article.is_favorite());
             response
         })
-        .collect::<Vec<ArticleResponse>>();
-
-    let response = MultipleArticleResponse::new(article_response);
-
-    Ok(Json(response))
+        .collect::<Vec<ArticleResponse>>()
 }
 
 #[derive(Serialize)]
