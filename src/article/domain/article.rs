@@ -73,6 +73,39 @@ impl Article {
         }
     }
 
+    pub fn modify_title_option(self, title: Option<String>) -> Self {
+        if let Some(title) = title {
+            let slug = title.replace(" ", "-");
+            Article {
+                title,
+                slug,
+                updated_at: Utc::now(),
+                ..self
+            }
+        } else { self }
+    }
+
+    pub fn modify_body_option(self, body: Option<String>) -> Self {
+        if let Some(body) = body {
+            Article {
+                body,
+                updated_at: Utc::now(),
+                ..self
+            }
+        } else { self }
+    }
+
+    pub fn modify_description_option(self, description: Option<String>) -> Self {
+        if let Some(description) = description {
+            Article {
+                description,
+                updated_at: Utc::now(),
+                ..self
+            }
+        } else { self }
+
+    }
+
     pub fn is_not_author(&self, user_id: i64) -> bool {
         !self.author.id == user_id
     }
