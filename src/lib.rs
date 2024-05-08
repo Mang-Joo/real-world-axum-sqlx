@@ -4,7 +4,7 @@ use axum::{Extension, Router};
 use tokio::net::TcpListener;
 
 use crate::article::route::article_route;
-use crate::config::app_state::{AppState, init_app_state};
+use crate::config::app_state::{AppState, ArcAppState, init_app_state};
 use crate::config::error::error_handler;
 use crate::user::route::user_route;
 
@@ -26,7 +26,7 @@ pub async fn start_application() -> () {
     axum::serve(listener, route).await.unwrap();
 }
 
-pub async fn create_route(app_state: Arc<AppState>) -> Router {
+pub async fn create_route(app_state: ArcAppState) -> Router {
     Router::new()
         .nest("/api", user_route().await)
         .nest("/api", article_route().await)

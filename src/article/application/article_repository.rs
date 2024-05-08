@@ -12,10 +12,13 @@ use crate::article::application::tag_repository::save_tags;
 use crate::article::domain::article::{Article, ArticleWithFavorite, Author};
 use crate::article::domain::tag::Tag;
 use crate::config;
-use crate::config::app_state::AppState;
+use crate::config::app_state::{AppState, ArcAppState};
 use crate::user::application::user_repository::find_by_user_name;
 
-pub async fn save_article(article: Article, app_state: Arc<AppState>) -> config::Result<Article> {
+pub async fn save_article(
+    article: Article,
+    app_state: ArcAppState
+) -> config::Result<Article> {
     let db_pool = &app_state.pool;
     let mut transaction: Transaction<'_, Postgres> = db_pool.begin().await.unwrap();
 
@@ -68,7 +71,7 @@ pub async fn save_article(article: Article, app_state: Arc<AppState>) -> config:
 
 pub async fn get_single_article_by_repository(
     slug: String,
-    app_state: Arc<AppState>,
+    app_state: ArcAppState,
 ) -> config::Result<Article> {
     let article_author_entity = sqlx::query_as!(
         SingleArticleEntity,
@@ -115,7 +118,7 @@ pub async fn get_single_article_by_repository(
 pub async fn get_default_articles_by_repository(
     user_id: Option<i64>,
     article_query: ListArticleRequest,
-    app_state: Arc<AppState>,
+    app_state: ArcAppState,
 ) -> config::Result<Vec<ArticleWithFavorite>> {
     let favorite_id = if let Some(favorite_user) = article_query.favorited() {
         let user = find_by_user_name(favorite_user, &app_state.pool).await?;
@@ -188,7 +191,7 @@ pub async fn get_feed_articles_by_respository(
     user_id: i64,
     limit: i64,
     offset: i64,
-    app_state: Arc<AppState>,
+    app_state: ArcAppState,
 ) -> config::Result<Vec<ArticleWithFavorite>> {
     let article_entity_list = sqlx::query_as!(
         MultipleArticleEntity,

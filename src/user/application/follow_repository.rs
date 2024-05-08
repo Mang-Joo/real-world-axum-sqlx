@@ -4,9 +4,13 @@ use log::{error, info};
 use sqlx::Row;
 
 use crate::config;
+use crate::config::app_state::ArcAppState;
 use crate::config::db::DbPool;
 
-pub async fn is_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) -> bool {
+pub async fn is_follow(
+    follower_id: i64,
+    following_id: i64,
+    arc_app_state: ArcAppState) -> bool {
     let result: bool = sqlx::query("
             SELECT EXISTS(
                 SELECT 1
@@ -17,7 +21,7 @@ pub async fn is_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) ->
     ")
         .bind(follower_id)
         .bind(following_id)
-        .fetch_one(db_pool)
+        .fetch_one(&arc_app_state.pool)
         .await
         .map_err(|err| {
             error!("follow checking error {}", err.to_string());
@@ -31,7 +35,11 @@ pub async fn is_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) ->
     result
 }
 
-pub async fn save_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) -> config::Result<bool> {
+pub async fn save_follow(
+    follower_id: i64,
+    following_id: i64,
+    arc_app_state: ArcAppState
+) -> config::Result<bool> {
     let _ = sqlx::query("
     INSERT INTO user_follow (follower_id, following_id, created_at, updated_at, deleted)
     VALUES ($1, $2, $3 , $4, $5)
@@ -41,7 +49,7 @@ pub async fn save_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) 
         .bind(Utc::now())
         .bind(Utc::now())
         .bind(false)
-        .execute(db_pool)
+        .execute(&arc_app_state.pool)
         .await
         .map_err(|err| {
             error!("Following error follower id is {} and following id is {} \n Error is {}", follower_id, following_id, err);
@@ -51,7 +59,11 @@ pub async fn save_follow(follower_id: i64, following_id: i64, db_pool: &DbPool) 
     Ok(true)
 }
 
-pub async fn unfollow(follower_id: i64, following_id: i64, db_pool: &DbPool) -> config::Result<bool> {
+pub async fn unfollow(
+    follower_id: i64,
+    following_id: i64,
+    arc_app_state: ArcAppState
+) -> config::Result<bool> {
     let _ = sqlx::query(r#"
     UPDATE user_follow
     SET updated_at = ?, deleted = true
@@ -60,7 +72,7 @@ pub async fn unfollow(follower_id: i64, following_id: i64, db_pool: &DbPool) -> 
         .bind(Utc::now())
         .bind(follower_id)
         .bind(following_id)
-        .execute(db_pool)
+        .execute(&arc_app_state.pool)
         .await
         .map_err(|err| {
             error!("Unfollow Error {}", err);
@@ -72,20 +84,24 @@ pub async fn unfollow(follower_id: i64, following_id: i64, db_pool: &DbPool) -> 
 
 
 mod test {
+    use std::sync::Arc;
+    use crate::config::app_state;
+    use crate::config::app_state::init_app_state;
     use crate::config::db::init_db;
     use crate::user::application::follow_repository::{is_follow, save_follow, unfollow};
     use crate::user::application::user_repository::find_by_id;
 
     #[tokio::test]
     async fn is_follow_user_false_test() {
-        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres"))
-            .await;
+        let app_state = init_app_state().await;
+        let arc_app_state = Arc::new(app_state);
 
-        let user = find_by_id(1, &db)
+
+        let user = find_by_id(1, arc_app_state)
             .await
             .expect("");
 
-        let response = is_follow(user.id(), 2, &db).await;
+        let response = is_follow(user.id(), 2, arc_app_state).await;
 
         assert_eq!(false, response);
     }

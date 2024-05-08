@@ -4,10 +4,11 @@ use log::error;
 use sqlx::{Encode, FromRow, Row};
 
 use crate::config;
+use crate::config::app_state::ArcAppState;
 use crate::config::db::DbPool;
 use crate::user::domain::user::User;
 
-pub async fn find_by_email(email: &String, db_pool: &DbPool) -> config::Result<User> {
+pub async fn find_by_email(email: &String, arc_app_state: ArcAppState) -> config::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
         r#"
@@ -15,37 +16,46 @@ pub async fn find_by_email(email: &String, db_pool: &DbPool) -> config::Result<U
         FROM users WHERE email = $1 and deleted = false
         "#,
         email
-    ).fetch_optional(db_pool)
-        .await
-        .context(format!("Failed to find user with email: {}", email))?;
+    )
+    .fetch_optional(&arc_app_state.pool)
+    .await
+    .context(format!("Failed to find user with email: {}", email))?;
 
     let user_entity = match user {
-        None => { return Err(anyhow!("Failed to find user with email: {}", email)); }
-        Some(user) => { user }
+        None => {
+            return Err(anyhow!("Failed to find user with email: {}", email));
+        }
+        Some(user) => user,
     };
 
     Ok(user_entity.to_domain())
 }
 
-pub async fn find_by_user_name(user_name: &String, db_pool: &DbPool) -> config::Result<User> {
+pub async fn find_by_user_name(
+    user_name: &String,
+    arc_app_state: ArcAppState,
+) -> config::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
         r#"SELECT id, email, password, user_name, bio, image, registration_date, modified_date
         FROM users WHERE user_name = $1 and deleted = false"#,
         user_name
-    ).fetch_optional(db_pool)
-        .await
-        .context(format!("Failed to find user with name {}", user_name))?;
+    )
+    .fetch_optional(&arc_app_state.pool)
+    .await
+    .context(format!("Failed to find user with name {}", user_name))?;
 
     let user_entity = match user {
-        None => { return Err(anyhow!("Failed to find user with username: {}", user_name)); }
-        Some(user) => { user }
+        None => {
+            return Err(anyhow!("Failed to find user with username: {}", user_name));
+        }
+        Some(user) => user,
     };
 
     Ok(user_entity.to_domain())
 }
 
-pub async fn find_by_id(id: i64, db_pool: &DbPool) -> config::Result<User> {
+pub async fn find_by_id(id: i64, arc_app_state: ArcAppState) -> config::Result<User> {
     let user = sqlx::query_as!(
         UserEntity,
         r#"
@@ -53,53 +63,58 @@ pub async fn find_by_id(id: i64, db_pool: &DbPool) -> config::Result<User> {
         FROM users WHERE id = $1 and deleted = false
         "#,
         id as i32
-    ).fetch_optional(db_pool)
-        .await
-        .context(format!("Failed to find user with email: {}", id))?;
+    )
+    .fetch_optional(&arc_app_state.pool)
+    .await
+    .context(format!("Failed to find user with email: {}", id))?;
 
     let user_entity = match user {
         None => {
             error!("Failed find user id {}", id);
             return Err(anyhow!("Failed to find user with id: {}", id));
         }
-        Some(user) => { user }
+        Some(user) => user,
     };
 
     Ok(user_entity.to_domain())
 }
 
-pub async fn update_user_entity(user: &User, db_pool: &DbPool) -> config::Result<()> {
+pub async fn update_user_entity(user: &User, arc_app_state: ArcAppState) -> config::Result<()> {
     let entity = UserEntity::from_domain(user);
 
-    let result = sqlx::query(r#"
+    let result = sqlx::query(
+        r#"
         UPDATE users
         SET user_name = ?, email = ?, password = ?, bio = ?, image = ?, modified_date = ?
         WHERE id = ?
-    "#)
-        .bind(&entity.user_name)
-        .bind(&entity.email)
-        .bind(&entity.password)
-        .bind(&entity.bio)
-        .bind(&entity.image)
-        .bind(&entity.modified_date)
-        .bind(entity.id)
-        .execute(db_pool)
-        .await;
+    "#,
+    )
+    .bind(&entity.user_name)
+    .bind(&entity.email)
+    .bind(&entity.password)
+    .bind(&entity.bio)
+    .bind(&entity.image)
+    .bind(&entity.modified_date)
+    .bind(entity.id)
+    .execute(&arc_app_state.pool)
+    .await;
 
     match result {
-        Ok(_) => { () }
+        Ok(_) => (),
         Err(err) => {
             error!("err is {err}");
             eprintln!("err is {err}");
-            return Err(anyhow!("Failed update user. User email is {}", user.email()));
+            return Err(anyhow!(
+                "Failed update user. User email is {}",
+                user.email()
+            ));
         }
     };
-
 
     Ok(())
 }
 
-pub async fn save_user(user: User, db_pool: &DbPool) -> config::Result<User> {
+pub async fn save_user(user: User, arc_app_state: ArcAppState) -> config::Result<User> {
     let row = sqlx::query(
         "INSERT INTO users (email, password, user_name, bio, image, registration_date, modified_date, deleted)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) returning id
@@ -112,11 +127,11 @@ pub async fn save_user(user: User, db_pool: &DbPool) -> config::Result<User> {
         .bind(user.registration_date().naive_utc())
         .bind(user.modified_date().naive_utc())
         .bind(false)
-        .fetch_one(db_pool)
+        .fetch_one(&arc_app_state.pool)
         .await;
 
     let row = match row {
-        Ok(row) => { row }
+        Ok(row) => row,
         Err(err) => {
             error!("err is {err}");
             return Err(anyhow!("Failed save user. User email is {}", user.email()));
@@ -177,17 +192,22 @@ impl UserEntity {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::config::db::init_db;
+    use std::sync::Arc;
+
+    use crate::config::app_state::init_app_state;
     use crate::user::application::user_repository::{find_by_email, find_by_id, update_user_entity};
+
+    use crate::user::application::user_repository::{
+        find_by_email, find_by_id, update_user_entity,
+    };
 
     #[tokio::test]
     async fn find_email_test() {
-        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres")).await;
-        let user = find_by_email(&String::from("Hi"), &db)
-            .await;
+        let app_state = init_app_state().await;
+        let arc_app_state = Arc::new(app_state);
+        let user = find_by_email(&String::from("Hi"), arc_app_state).await;
 
         println!("{:?}", user);
 
@@ -196,15 +216,13 @@ mod tests {
 
     #[tokio::test]
     async fn update_user_test() {
-        let db = init_db(String::from("postgresql://postgres:11223344@146.56.115.136:5432/postgres"))
-            .await;
-        let user = find_by_id(1, &db)
-            .await
-            .expect("");
+        let app_state = init_app_state().await;
+        let arc_app_state = Arc::new(app_state);
+        let user = find_by_id(1, arc_app_state).await.expect("");
 
         let user = user.set_user_name(String::from("Update_test"));
 
-        let result = update_user_entity(&user, &db)
+        let result = update_user_entity(&user, arc_app_state)
             .await
             .expect("Error");
 

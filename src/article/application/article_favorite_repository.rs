@@ -3,12 +3,12 @@ use std::sync::Arc;
 use anyhow::Context;
 
 use crate::config;
-use crate::config::app_state::AppState;
+use crate::config::app_state::{AppState, ArcAppState};
 
 pub async fn is_favorite_article(
     user_id: i64,
     article_id: i64,
-    app_state: Arc<AppState>,
+    app_state: ArcAppState
 ) -> config::Result<bool> {
     let result = sqlx::query(
         r#"
