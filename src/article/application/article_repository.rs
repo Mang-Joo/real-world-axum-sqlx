@@ -15,10 +15,7 @@ use crate::config;
 use crate::config::app_state::{AppState, ArcAppState};
 use crate::user::application::user_repository::find_by_user_name;
 
-pub async fn save_article(
-    article: Article,
-    app_state: ArcAppState
-) -> config::Result<Article> {
+pub async fn save_article(article: Article, app_state: ArcAppState) -> config::Result<Article> {
     let db_pool = &app_state.pool;
     let mut transaction: Transaction<'_, Postgres> = db_pool.begin().await.unwrap();
 
@@ -121,7 +118,7 @@ pub async fn get_default_articles_by_repository(
     app_state: ArcAppState,
 ) -> config::Result<Vec<ArticleWithFavorite>> {
     let favorite_id = if let Some(favorite_user) = article_query.favorited() {
-        let user = find_by_user_name(favorite_user, &app_state.pool).await?;
+        let user = find_by_user_name(favorite_user, Arc::clone(&app_state)).await?;
         Some(user.id())
     } else {
         None
