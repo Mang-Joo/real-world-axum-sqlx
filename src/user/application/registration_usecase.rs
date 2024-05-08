@@ -5,47 +5,45 @@ use chrono::Utc;
 use log::info;
 use serde::Deserialize;
 use validator_derive::Validate;
-use crate::config;
-use crate::config::app_state::AppState;
 
+use crate::config;
+use crate::config::app_state::ArcAppState;
 use crate::user::application::user_repository::{find_by_email, find_by_user_name, save_user};
 use crate::user::domain::hash_password::ArgonHash;
 use crate::user::domain::user::User;
 
 pub async fn registration(
-    state: &Arc<AppState>,
+    app_state: ArcAppState,
     request: RegistrationUserRequest,
 ) -> config::Result<User> {
     let user = request.to_domain();
     info!("registration request email is {}", user.email());
 
-    let find_user = find_by_email(user.email(), &state.pool)
-        .await;
+    let find_user = find_by_email(user.email(), Arc::clone(&app_state)).await;
 
     match find_user {
-        Ok(_) => { return Err(anyhow!("Already has email.")); }
+        Ok(_) => {
+            return Err(anyhow!("Already has email."));
+        }
         Err(_) => {}
     };
 
-    let find_user = find_by_user_name(user.user_name(), &state.pool).await;
+    let find_user = find_by_user_name(user.user_name(), Arc::clone(&app_state)).await;
 
     match find_user {
-        Ok(_) => { return Err(anyhow!("Already has username.")); }
+        Ok(_) => {
+            return Err(anyhow!("Already has username."));
+        }
         Err(_) => {}
     };
 
     let user = user.hash_password(&ArgonHash::default()).await?;
-    let user = save_user(
-        user,
-        &state.pool,
-    )
-        .await?;
+    let user = save_user(user, Arc::clone(&app_state)).await?;
 
     info!("Success Registration! {}", user.email());
 
     Ok(user)
 }
-
 
 #[derive(Deserialize, Validate, Debug)]
 pub struct RegistrationUserRequest {
@@ -53,7 +51,10 @@ pub struct RegistrationUserRequest {
     username: Option<String>,
     #[validate(required(message = "email is required."))]
     email: Option<String>,
-    #[validate(required(message = "password is required."), length(min = 6, message = "Password must be at least 6 characters."))]
+    #[validate(
+        required(message = "password is required."),
+        length(min = 6, message = "Password must be at least 6 characters.")
+    )]
     password: Option<String>,
     bio: Option<String>,
     image: Option<String>,

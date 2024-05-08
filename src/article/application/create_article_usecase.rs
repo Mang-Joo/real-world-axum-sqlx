@@ -10,7 +10,7 @@ use crate::{config, user};
 use crate::article::application::article_repository;
 use crate::article::domain::article::{Article, Author};
 use crate::article::domain::tag::Tag;
-use crate::config::app_state::{AppState, ArcAppState};
+use crate::config::app_state::{ArcAppState};
 use crate::user::domain::user::User;
 
 pub async fn create_article(

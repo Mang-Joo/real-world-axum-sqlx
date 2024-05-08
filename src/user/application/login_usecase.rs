@@ -6,13 +6,13 @@ use validator_derive::Validate;
 
 use crate::auth::jwt_encoder::JwtEncoder;
 use crate::config;
-use crate::config::app_state::AppState;
+use crate::config::app_state::{AppState, ArcAppState};
 use crate::user::application::user_handler::{to_response, UserResponse};
 use crate::user::application::user_repository::find_by_email;
 use crate::user::domain::hash_password::ArgonHash;
 
-pub async fn user_login(app_state: Arc<AppState>, login_request: LoginRequest) -> config::Result<UserResponse> {
-    let user = find_by_email(&login_request.email.unwrap(), &app_state.pool)
+pub async fn user_login(app_state: ArcAppState, login_request: LoginRequest) -> config::Result<UserResponse> {
+    let user = find_by_email(&login_request.email.unwrap(), Arc::clone(&app_state))
         .await
         .map_err(|err| anyhow!(err))?;
 
