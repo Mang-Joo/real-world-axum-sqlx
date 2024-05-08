@@ -11,12 +11,12 @@ pub async fn is_favorite_article(
     app_state: Arc<AppState>,
 ) -> config::Result<bool> {
     let result = sqlx::query(
-        "
+        r#"
     SELECT 1
     FROM article_favorite
     WHERE article_id = $1
     AND favorite_user_id = $2
-    ",
+    "#,
     )
     .bind(article_id)
     .bind(user_id)

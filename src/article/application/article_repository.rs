@@ -15,10 +15,7 @@ use crate::config;
 use crate::config::app_state::AppState;
 use crate::user::application::user_repository::find_by_user_name;
 
-pub async fn save_article(
-    article: Article,
-    app_state: Arc<AppState>,
-) -> config::Result<Article> {
+pub async fn save_article(article: Article, app_state: Arc<AppState>) -> config::Result<Article> {
     let db_pool = &app_state.pool;
     let mut transaction: Transaction<'_, Postgres> = db_pool.begin().await.unwrap();
 
@@ -28,15 +25,15 @@ pub async fn save_article(
         VALUES ($1, $2, $3, $4, $5, $6, $7) returning id
     "#,
     )
-        .bind(article.slug())
-        .bind(article.title())
-        .bind(article.description())
-        .bind(article.body())
-        .bind(article.created_at())
-        .bind(article.updated_at())
-        .bind(article.author().id())
-        .fetch_one(&mut *transaction)
-        .await?;
+    .bind(article.slug())
+    .bind(article.title())
+    .bind(article.description())
+    .bind(article.body())
+    .bind(article.created_at())
+    .bind(article.updated_at())
+    .bind(article.author().id())
+    .fetch_one(&mut *transaction)
+    .await?;
 
     let inserted_id = result.get::<i64, usize>(0);
 
@@ -99,12 +96,12 @@ pub async fn get_single_article_by_repository(
 ",
         slug
     )
-        .fetch_optional(&app_state.pool)
-        .await
-        .map_err(|err| {
-            println!("{}", err.to_string());
-            anyhow!(format!("Did not find slug {}", slug))
-        })?;
+    .fetch_optional(&app_state.pool)
+    .await
+    .map_err(|err| {
+        println!("{}", err.to_string());
+        anyhow!(format!("Did not find slug {}", slug))
+    })?;
 
     if let Some(article_entity) = article_author_entity {
         info!("Find success entity {:?}", article_entity);
@@ -243,7 +240,6 @@ LIMIT $2 OFFSET $3;
     Ok(articles)
 }
 
-
 #[derive(Debug, FromRow, Encode)]
 struct MultipleArticleEntity {
     article_id: i64,
@@ -350,7 +346,7 @@ mod tests {
             String::from("Hello-mangjoo-2478"),
             Arc::new(app_state),
         )
-            .await;
+        .await;
 
         assert_eq!(article.is_ok(), true);
     }
