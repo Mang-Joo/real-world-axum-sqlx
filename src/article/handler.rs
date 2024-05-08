@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use axum::{Extension, Json};
 use axum::extract::{Path, Query};
 use axum::response::IntoResponse;
-use axum::{Extension, Json};
 use chrono::NaiveDateTime;
 use serde::Serialize;
 
@@ -11,11 +11,11 @@ use crate::article::application::get_articles_default_usecase::{
     get_article_default, ListArticleRequest,
 };
 use crate::article::application::get_feed_article_usecase::{
-    get_feed_articles, FeedArticleRequest,
+    FeedArticleRequest, get_feed_articles,
 };
 use crate::article::application::get_single_article_usecase::get_single_article;
 use crate::article::application::update_article_usecase::{
-    update_article, UpdateArticle, UpdateArticleSlug,
+    update_article, UpdateArticle,
 };
 use crate::article::domain::article::{Article, ArticleWithFavorite, Author};
 use crate::config::app_state::{AppState, ArcAppState};

@@ -1,7 +1,7 @@
 use std::sync::Arc;
-use crate::config;
-use crate::config::app_state::{AppState, ArcAppState};
 
+use crate::config;
+use crate::config::app_state::ArcAppState;
 use crate::user::application::follow_repository::is_follow;
 use crate::user::application::user_repository::find_by_user_name;
 use crate::user::domain::user::User;
@@ -15,8 +15,9 @@ pub async fn get_profile(
 
     let is_follow: bool = if let Some(user_id) = user_id {
         is_follow(user_id, target_user.id(), Arc::clone(&app_state)).await
-    } else { false };
+    } else {
+        false
+    };
 
     Ok((target_user, is_follow))
 }
-
