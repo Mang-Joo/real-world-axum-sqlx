@@ -6,4 +6,4 @@ mod article_repository;
 mod tag_repository;
 mod article_tag_repository;
 mod article_favorite_repository;
-mod update_article_usecase;
+pub mod update_article_usecase;
