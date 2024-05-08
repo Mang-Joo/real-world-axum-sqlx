@@ -3,8 +3,8 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use chrono::{NaiveDateTime, Utc};
 use log::error;
-use sqlx::{Encode, Postgres, QueryBuilder, Row, Transaction};
 use sqlx::FromRow;
+use sqlx::{Encode, Postgres, QueryBuilder, Row, Transaction};
 
 use crate::article::application::article_tag_repository::save_article_and_tags;
 use crate::article::application::get_articles_default_usecase::ListArticleRequest;
@@ -237,57 +237,28 @@ LIMIT $2 OFFSET $3;
 }
 
 pub async fn update_article(
-    article_id: i64,
-    request: UpdateArticle,
+    article: Article,
     arc_app_state: ArcAppState,
 ) -> config::Result<Article> {
-    let mut query_builder = QueryBuilder::new("UPDATE article SET ");
-
-    let mut flag = false;
-
-    if let Some(title) = request.title {
-        let slug = title.replace(" ", "-");
-        query_builder
-            .push("title = ")
-            .push_bind(title)
-            .push(", slug = ")
-            .push_bind(slug);
-        flag = true;
-    }
-
-    if let Some(description) = request.description {
-        if flag {
-            query_builder
-                .push(", description = ")
-                .push_bind(description);
-        } else {
-            query_builder.push("description = ").push_bind(description);
-            flag = true;
-        }
-    }
-
-    if let Some(body) = request.body {
-        if flag {
-            query_builder.push(", body = ").push_bind(body);
-        } else {
-            query_builder.push("body = ").push_bind(body);
-        }
-    }
-
-    if flag {
-        query_builder.push(", updated_at = ").push_bind(Utc::now());
-    }
-
-    query_builder.push(" WHERE id = ").push_bind(article_id);
-
-    query_builder
-        .build()
-        .execute(&arc_app_state.pool)
-        .await
-        .map_err(|err| {
-            error!("Failed update article {}", err.to_string());
-            anyhow!("Failed update article.")
-        })?;
+    let _ = sqlx::query(
+        r#"
+    update article SET
+    title = $1,
+    body = $2,
+    description = $3,
+    updated_at = $4,
+    "#,
+    )
+    .bind(article.title())
+    .bind(article.body())
+    .bind(article.description())
+    .bind(article.updated_at())
+    .execute(&arc_app_state.pool)
+    .await
+    .map_err(|err| {
+        error!("Failed update article {}", err.to_string());
+        anyhow!("Failed update article.")
+    })?;
 
     let single_article_entity = sqlx::query_as!(
         SingleArticleEntity,
@@ -313,7 +284,7 @@ pub async fn update_article(
             and article.deleted = false
         GROUP BY article.id, author.id, created_at
         "#,
-        article_id
+        article.id()
     )
     .fetch_one(&arc_app_state.pool)
     .await

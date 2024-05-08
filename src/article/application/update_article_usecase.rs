@@ -16,22 +16,21 @@ pub async fn update_article(
     request: UpdateArticle,
     app_state: ArcAppState,
 ) -> config::Result<ArticleWithFavorite> {
-    let single_article = article_repository::get_single_article_by_repository(
-        slug.clone(),
-        Arc::clone(&app_state),
-    )
-    .await
-    .context(format!("Don't have this slug article {}", slug))?;
+    let article =
+        article_repository::get_single_article_by_repository(slug.clone(), Arc::clone(&app_state))
+            .await
+            .context(format!("Don't have this slug article {}", slug))?;
 
-    if single_article.is_not_author(user_id) {
+    if article.is_not_author(user_id) {
         anyhow!("User is not author. Can't update article.");
     };
 
-    let article = article_repository::update_article(
-        single_article.id(),
-        request,
-        Arc::clone(&app_state),
-    ).await?;
+    let article = article
+        .modify_title_option(request.title)
+        .modify_body_option(request.body)
+        .modify_description_option(request.description);
+
+    let article = article_repository::update_article(article, Arc::clone(&app_state)).await?;
 
     info!("Success update article article id {}", article.id());
 
