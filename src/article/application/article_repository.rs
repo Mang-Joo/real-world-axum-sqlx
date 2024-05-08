@@ -1,18 +1,19 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
-use chrono::NaiveDateTime;
-use log::{error, info};
-use sqlx::{Encode, Postgres, Row, Transaction};
+use chrono::{NaiveDateTime, Utc};
+use log::error;
+use sqlx::{Encode, Postgres, QueryBuilder, Row, Transaction};
 use sqlx::FromRow;
 
 use crate::article::application::article_tag_repository::save_article_and_tags;
 use crate::article::application::get_articles_default_usecase::ListArticleRequest;
 use crate::article::application::tag_repository::save_tags;
+use crate::article::application::update_article_usecase::UpdateArticle;
 use crate::article::domain::article::{Article, ArticleWithFavorite, Author};
 use crate::article::domain::tag::Tag;
 use crate::config;
-use crate::config::app_state::{AppState, ArcAppState};
+use crate::config::app_state::ArcAppState;
 use crate::user::application::user_repository::find_by_user_name;
 
 pub async fn save_article(article: Article, app_state: ArcAppState) -> config::Result<Article> {
@@ -38,8 +39,6 @@ pub async fn save_article(article: Article, app_state: ArcAppState) -> config::R
     let inserted_id = result.get::<i64, usize>(0);
 
     let tags = if let Some(tags) = article.tag_list() {
-        info!("tags {:?}", tags);
-
         let tags = save_tags(tags, &mut transaction).await?;
         save_article_and_tags(inserted_id, &tags, &mut transaction).await?;
 
@@ -104,7 +103,6 @@ pub async fn get_single_article_by_repository(
     })?;
 
     if let Some(article_entity) = article_author_entity {
-        info!("Find success entity {:?}", article_entity);
         Ok(article_entity.to_domain())
     } else {
         error!("Failed get article {}", slug);
@@ -140,7 +138,7 @@ SELECT article.id                         as article_id,
        author.image,
        array_agg(tag.tag_name)            as tags,
        COALESCE(favorite_count.count, 0)  as favorite_count,
-       COALESCE(is_favorite.exist, false) as is_favorite
+       COALESCE(is_favorite.exist, false) as "is_favorite!"
 FROM article
          INNER JOIN users author on article.user_id = author.id
          LEFT JOIN article_tag tag on article.id = tag.article_id
@@ -179,12 +177,10 @@ LIMIT $5 OFFSET $6;
         .map(|article_entity| article_entity.to_domain())
         .collect::<Vec<ArticleWithFavorite>>();
 
-    info!("Get succeed default articles count : {}", articles.len());
-
     Ok(articles)
 }
 
-pub async fn get_feed_articles_by_respository(
+pub async fn get_feed_articles_by_repository(
     user_id: i64,
     limit: i64,
     offset: i64,
@@ -240,6 +236,100 @@ LIMIT $2 OFFSET $3;
     Ok(articles)
 }
 
+pub async fn update_article(
+    article_id: i64,
+    request: UpdateArticle,
+    arc_app_state: ArcAppState,
+) -> config::Result<Article> {
+    let mut query_builder = QueryBuilder::new("UPDATE article SET ");
+
+    let mut flag = false;
+
+    if let Some(title) = request.title {
+        let slug = title.replace(" ", "-");
+        query_builder
+            .push("title = ")
+            .push_bind(title)
+            .push(", slug = ")
+            .push_bind(slug);
+        flag = true;
+    }
+
+    if let Some(description) = request.description {
+        if flag {
+            query_builder
+                .push(", description = ")
+                .push_bind(description);
+        } else {
+            query_builder.push("description = ").push_bind(description);
+            flag = true;
+        }
+    }
+
+    if let Some(body) = request.body {
+        if flag {
+            query_builder.push(", body = ").push_bind(body);
+        } else {
+            query_builder.push("body = ").push_bind(body);
+        }
+    }
+
+    if flag {
+        query_builder.push(", updated_at = ").push_bind(Utc::now());
+    }
+
+    query_builder.push(" WHERE id = ").push_bind(article_id);
+
+    query_builder
+        .build()
+        .execute(&arc_app_state.pool)
+        .await
+        .map_err(|err| {
+            error!("Failed update article {}", err.to_string());
+            anyhow!("Failed update article.")
+        })?;
+
+    let single_article_entity = sqlx::query_as!(
+        SingleArticleEntity,
+        r#"
+        SELECT article.id as article_id,
+            article.slug,
+            article.title,
+            article.description,
+            article.body,
+            article.created_at,
+            article.updated_at,
+            author.id    as user_id,
+            author.user_name,
+            author.bio,
+            author.image,
+            array_agg(tag.tag_name)    tags,
+            COUNT(favorite.article_id) favorite_count
+        from article
+            join users author on article.user_id = author.id
+            LEFT JOIN article_tag tag on article.id = tag.article_id
+            LEFT JOIN article_favorite favorite on article.id = favorite.article_id
+        where article.id = $1
+            and article.deleted = false
+        GROUP BY article.id, author.id, created_at
+        "#,
+        article_id
+    )
+    .fetch_one(&arc_app_state.pool)
+    .await
+    .map_err(|err| {
+        error!(
+            "Failed get single article after update article {}",
+            err.to_string()
+        );
+        anyhow!("Failed get single article after update article.")
+    })?;
+
+    let article = single_article_entity.to_domain();
+
+    Ok(article)
+}
+
 #[derive(Debug, FromRow, Encode)]
 struct MultipleArticleEntity {
     article_id: i64,
@@ -272,11 +362,13 @@ impl MultipleArticleEntity {
             None
         };
 
-        let article = Article::new(
+        let article = Article::from(
             self.article_id,
             self.title,
             self.description,
             self.body,
+            self.created_at.and_utc(),
+            self.updated_at.and_utc(),
             self.favorite_count.unwrap(),
             tags,
             author,
@@ -317,11 +409,13 @@ impl SingleArticleEntity {
             None
         };
 
-        Article::new(
+        Article::from(
             self.article_id,
             self.title,
             self.description,
             self.body,
+            self.created_at.and_utc(),
+            self.updated_at.and_utc(),
             self.favorite_count.unwrap(),
             tags,
             author,
