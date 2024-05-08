@@ -5,12 +5,12 @@ use serde::Deserialize;
 use crate::article::application::article_repository::get_default_articles_by_repository;
 use crate::article::domain::article::ArticleWithFavorite;
 use crate::config;
-use crate::config::app_state::AppState;
+use crate::config::app_state::{AppState, ArcAppState};
 
 pub async fn get_article_default(
     user_id: Option<i64>,
     request: ListArticleRequest,
-    app_state: Arc<AppState>,
+    app_state: ArcAppState,
 ) -> config::Result<Vec<ArticleWithFavorite>> {
     let articles =
         get_default_articles_by_repository(user_id, request, Arc::clone(&app_state)).await?;

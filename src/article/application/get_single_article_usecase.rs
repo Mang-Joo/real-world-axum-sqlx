@@ -4,12 +4,12 @@ use crate::article::application::article_favorite_repository::is_favorite_articl
 use crate::article::application::article_repository::get_single_article_by_repository;
 use crate::article::domain::article::ArticleWithFavorite;
 use crate::config;
-use crate::config::app_state::AppState;
+use crate::config::app_state::{AppState, ArcAppState};
 
 pub async fn get_single_article(
     user_id: Option<i64>,
     slug: String,
-    app_state: Arc<AppState>,
+    app_state: ArcAppState
 ) -> config::Result<ArticleWithFavorite> {
 
     let article = get_single_article_by_repository(

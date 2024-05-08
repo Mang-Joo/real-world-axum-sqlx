@@ -6,17 +6,17 @@ use validator_derive::Validate;
 
 use user::application::get_current_user_usecase;
 
+use crate::{config, user};
 use crate::article::application::article_repository;
 use crate::article::domain::article::{Article, Author};
 use crate::article::domain::tag::Tag;
-use crate::config::app_state::AppState;
+use crate::config::app_state::{AppState, ArcAppState};
 use crate::user::domain::user::User;
-use crate::{config, user};
 
 pub async fn create_article(
     user_id: i64,
     article_request: PostArticleRequest,
-    app_state: Arc<AppState>,
+    app_state: ArcAppState,
 ) -> config::Result<Article> {
     let user = get_current_user_usecase::get_current_user(user_id, Arc::clone(&app_state)).await?;
 

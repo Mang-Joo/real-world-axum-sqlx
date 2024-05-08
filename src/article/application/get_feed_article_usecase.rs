@@ -4,12 +4,12 @@ use serde::Deserialize;
 use crate::article::application::article_repository;
 use crate::article::domain::article::ArticleWithFavorite;
 use crate::config;
-use crate::config::app_state::AppState;
+use crate::config::app_state::{AppState, ArcAppState};
 
 pub async fn get_feed_articles(
     user_id: i64,
     request: FeedArticleRequest,
-    app_state: Arc<AppState>
+    app_state: ArcAppState
 ) -> config::Result<Vec<ArticleWithFavorite>> {
     let articles = article_repository::get_feed_articles_by_respository(
         user_id,
