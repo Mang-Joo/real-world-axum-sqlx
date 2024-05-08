@@ -5,7 +5,7 @@ use axum::response::IntoResponse;
 use serde::Serialize;
 
 use crate::auth::jwt_encoder::JwtEncoder;
-use crate::config::app_state::AppState;
+use crate::config::app_state::{AppState, ArcAppState};
 use crate::config::error::AppError;
 use crate::config::validate::{JwtValidationExtractor, ValidationExtractor};
 use crate::user::application::{get_current_user_usecase, login_usecase, registration_usecase};
@@ -28,15 +28,15 @@ pub async fn login_user(
 }
 
 pub async fn registration_user(
-    Extension(state): Extension<Arc<AppState>>,
+    Extension(state): Extension<ArcAppState>,
     ValidationExtractor(request): ValidationExtractor<RegistrationUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let user = registration_usecase::registration(
-        &state,
+        Arc::clone(&state),
         request,
     ).await?;
 
-    let encoder = JwtEncoder::from(state);
+    let encoder = JwtEncoder::from(Arc::clone(&state));
     let token = encoder.encode_jwt(&user).await?;
 
     let response = to_response(user, token).await;
@@ -45,7 +45,7 @@ pub async fn registration_user(
 }
 
 pub async fn get_current_user(
-    Extension(state): Extension<Arc<AppState>>,
+    Extension(state): Extension<ArcAppState>,
     JwtValidationExtractor(user_id): JwtValidationExtractor,
 ) -> Result<impl IntoResponse, AppError> {
     let user = get_current_user_usecase::get_current_user(user_id, state).await?;
@@ -57,10 +57,10 @@ pub async fn get_current_user(
 
 pub async fn update_user_handler(
     JwtValidationExtractor(user_id): JwtValidationExtractor,
-    Extension(state): Extension<Arc<AppState>>,
+    Extension(state): Extension<ArcAppState>,
     ValidationExtractor(request): ValidationExtractor<UpdateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let updated_user = update_user(user_id, &state, request).await?;
+    let updated_user = update_user(user_id, Arc::clone(&state), request).await?;
 
     let response = to_response_by_user(updated_user).await;
 
