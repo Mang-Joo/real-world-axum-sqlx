@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use axum::{Extension, Json};
 use axum::extract::{Path, Query};
 use axum::response::IntoResponse;
+use axum::{Extension, Json};
 use chrono::NaiveDateTime;
 use serde::Serialize;
 
@@ -10,10 +10,15 @@ use crate::article::application::create_article_usecase::{create_article, PostAr
 use crate::article::application::get_articles_default_usecase::{
     get_article_default, ListArticleRequest,
 };
-use crate::article::application::get_feed_article_usecase::{FeedArticleRequest, get_feed_articles};
+use crate::article::application::get_feed_article_usecase::{
+    get_feed_articles, FeedArticleRequest,
+};
 use crate::article::application::get_single_article_usecase::get_single_article;
+use crate::article::application::update_article_usecase::{
+    update_article, UpdateArticle, UpdateArticleSlug,
+};
 use crate::article::domain::article::{Article, ArticleWithFavorite, Author};
-use crate::config::app_state::AppState;
+use crate::config::app_state::{AppState, ArcAppState};
 use crate::config::error::AppError;
 use crate::config::validate::{
     JwtValidationExtractor, OptionalAuthenticateExtractor, ValidationExtractor,
@@ -62,15 +67,27 @@ pub async fn get_feed_articles_handler(
     Query(query): Query<FeedArticleRequest>,
     Extension(state): Extension<Arc<AppState>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let articles = get_feed_articles(
-        user_id,
-        query,
-        Arc::clone(&state),
-    ).await?;
+    let articles = get_feed_articles(user_id, query, Arc::clone(&state)).await?;
 
     let article_response = to_article_response(articles);
 
     let response = MultipleArticleResponse::new(article_response);
+
+    Ok(Json(response))
+}
+
+pub async fn update_article_handler(
+    JwtValidationExtractor(user_id): JwtValidationExtractor,
+    Extension(state): Extension<ArcAppState>,
+    Path(slug): Path<String>,
+    Json(request): Json<UpdateArticle>,
+) -> Result<impl IntoResponse, AppError> {
+    let updated_article = update_article(user_id, slug, request, Arc::clone(&state)).await?;
+
+    let response = ArticleResponse::from_domain(
+        updated_article.article().to_owned(),
+        updated_article.is_favorite(),
+    );
 
     Ok(Json(response))
 }
