@@ -92,7 +92,6 @@ mod test {
     use std::sync::Arc;
 
     use crate::config::app_state::init_app_state;
-    use crate::config::db::init_db;
     use crate::user::application::follow_repository::{is_follow, save_follow, unfollow};
     use crate::user::application::user_repository::find_by_id;
 
