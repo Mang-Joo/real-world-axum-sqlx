@@ -48,6 +48,34 @@ impl Article {
         }
     }
 
+    pub fn from(
+        id: i64,
+        title: String,
+        description: String,
+        body: String,
+        created_at: DateTime<Utc>,
+        updated_at: DateTime<Utc>,
+        favorite_count: i64,
+        tag_list: Option<Vec<Tag>>,
+        author: Author,
+    ) -> Self {
+        Article {
+            id,
+            slug: title.replace(" ", "-"),
+            title,
+            description,
+            tag_list,
+            favorite_count,
+            body,
+            created_at,
+            updated_at,
+            author,
+        }
+    }
+
+    pub fn is_not_author(&self, user_id: i64) -> bool {
+        !self.author.id == user_id
+    }
 
     pub fn id(&self) -> i64 {
         self.id
@@ -94,13 +122,13 @@ impl Author {
     pub fn image(&self) -> &Option<String> {
         &self.image
     }
-    pub fn new(
-        id: i64,
-        user_name: String,
-        bio: Option<String>,
-        image: Option<String>,
-    ) -> Self {
-        Self { id, user_name, bio, image }
+    pub fn new(id: i64, user_name: String, bio: Option<String>, image: Option<String>) -> Self {
+        Self {
+            id,
+            user_name,
+            bio,
+            image,
+        }
     }
 }
 
@@ -112,9 +140,11 @@ pub struct ArticleWithFavorite {
 
 impl ArticleWithFavorite {
     pub fn new(article: Article, is_favorite: bool) -> Self {
-        Self { article, is_favorite }
+        Self {
+            article,
+            is_favorite,
+        }
     }
-
 
     pub fn article(&self) -> &Article {
         &self.article
