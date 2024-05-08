@@ -1,9 +1,11 @@
 use std::env;
+use std::sync::Arc;
 
 use dotenv::dotenv;
 
 use crate::config::db::{DbPool, init_db};
 
+pub type ArcAppState = Arc<AppState>;
 
 #[derive(Debug)]
 pub struct AppState {

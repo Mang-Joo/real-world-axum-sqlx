@@ -4,14 +4,14 @@ use axum::{Extension, Router};
 use tokio::net::TcpListener;
 
 use crate::article::route::article_route;
-use crate::config::app_state::{AppState, ArcAppState, init_app_state};
+use crate::config::app_state::{ArcAppState, init_app_state};
 use crate::config::error::error_handler;
 use crate::user::route::user_route;
 
 pub mod article;
-pub mod user;
 pub mod auth;
 pub mod config;
+pub mod user;
 
 pub async fn start_application() -> () {
     let app_state = init_app_state().await;

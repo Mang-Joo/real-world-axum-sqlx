@@ -4,7 +4,7 @@ use serde::Deserialize;
 use validator_derive::Validate;
 
 use crate::config;
-use crate::config::app_state::{AppState, ArcAppState};
+use crate::config::app_state::ArcAppState;
 use crate::user::application::user_repository;
 use crate::user::application::user_repository::update_user_entity;
 use crate::user::domain::hash_password::ArgonHash;
@@ -17,14 +17,14 @@ pub async fn update_user(
 ) -> config::Result<User> {
     let user = user_repository::find_by_id(user_id, Arc::clone(&arc_app_state)).await?;
 
-    let updated_user = user.set_user_name(request.user_name.unwrap())
+    let updated_user = user
+        .set_user_name(request.user_name.unwrap())
         .set_email(request.email.unwrap())
         .set_password(request.password.unwrap())
         .set_image(request.image)
         .set_bio(request.bio);
 
-    let updated_user = updated_user.hash_password(&ArgonHash::default())
-        .await?;
+    let updated_user = updated_user.hash_password(&ArgonHash::default()).await?;
 
     let _ = update_user_entity(&updated_user, Arc::clone(&arc_app_state)).await?;
 

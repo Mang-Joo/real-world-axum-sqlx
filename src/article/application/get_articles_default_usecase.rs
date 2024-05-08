@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::article::application::article_repository::get_default_articles_by_repository;
 use crate::article::domain::article::ArticleWithFavorite;
 use crate::config;
-use crate::config::app_state::{AppState, ArcAppState};
+use crate::config::app_state::ArcAppState;
 
 pub async fn get_article_default(
     user_id: Option<i64>,
