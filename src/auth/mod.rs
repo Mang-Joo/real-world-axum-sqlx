@@ -1,9 +1,5 @@
-use crate::auth::clock::Clock;
-
-pub mod auth;
 mod clock;
-mod auth_tests;
-pub mod jwt_encoder;
+pub mod hash_password;
 pub mod jwt_decoder;
-
-type JwtClock = dyn Clock + 'static + Send + Sync;
+pub mod jwt_encoder;
+mod jwt_payload;
