@@ -86,15 +86,15 @@ impl AuthUser {
         }
     }
 
-    pub fn username(&self) -> &str {
+    pub fn username(&self) -> &String {
         &self.username
     }
 
-    pub fn token(&self) -> &str {
+    pub fn token(&self) -> &String {
         &self.token
     }
 
-    pub fn email(&self) -> &str {
+    pub fn email(&self) -> &String {
         &self.email
     }
 

@@ -4,9 +4,9 @@ use validator::Validate;
 use validator_derive::Validate;
 
 use crate::config::error::AppError;
-use crate::config::validate::{self, ValidationExtractor};
+use crate::config::validate::{self, JwtValidationExtractor, ValidationExtractor};
 
-use super::domain::model::{UserLogin, UserRegistry};
+use super::domain::model::{UserLogin, UserRegistry, UserUpdate};
 use super::domain::service::DynUserService;
 use super::domain::user::AuthUser;
 
@@ -45,6 +45,36 @@ pub async fn login_api(
     ValidationExtractor(request): ValidationExtractor<UserRequestDto<UserLoginRequest>>,
 ) -> Result<Json<UserResponseDto<UserResponse>>, AppError> {
     let auth_user = service.login(request.user.to_login()).await?;
+
+    let response = UserResponse::new(auth_user);
+    Ok(Json(UserResponseDto { user: response }))
+}
+
+pub async fn get_info_api(
+    JwtValidationExtractor(id): JwtValidationExtractor,
+    Extension(service): Extension<DynUserService>,
+) -> Result<Json<UserResponseDto<UserResponse>>, AppError> {
+    let auth_user = service.get_info(id).await?;
+
+    let response = UserResponse::new(auth_user);
+    Ok(Json(UserResponseDto { user: response }))
+}
+
+pub async fn update_user_api(
+    JwtValidationExtractor(id): JwtValidationExtractor,
+    Extension(service): Extension<DynUserService>,
+    ValidationExtractor(request): ValidationExtractor<UserRequestDto<UserUpdateApiRequest>>,
+) -> Result<Json<UserResponseDto<UserResponse>>, AppError> {
+    let user_update_api_request = request.user;
+    if user_update_api_request.email.clone().is_some() {
+        service
+            .is_exist(user_update_api_request.email.clone().unwrap())
+            .await?;
+    }
+
+    let auth_user = service
+        .update(id, user_update_api_request.to_update())
+        .await?;
 
     let response = UserResponse::new(auth_user);
     Ok(Json(UserResponseDto { user: response }))
@@ -97,5 +127,28 @@ pub struct UserLoginRequest {
 impl UserLoginRequest {
     fn to_login(self) -> UserLogin {
         UserLogin::new(self.email, self.password)
+    }
+}
+
+#[derive(Deserialize, Validate)]
+pub struct UserUpdateApiRequest {
+    #[validate(length(min = 1, message = "User Name is required."))]
+    username: Option<String>,
+    #[validate(length(min = 1, message = "Email is required."))]
+    email: Option<String>,
+    #[validate(length(min = 8, message = "Password is wrong."))]
+    password: Option<String>,
+    image: Option<String>,
+    bio: Option<String>,
+}
+impl UserUpdateApiRequest {
+    fn to_update(self) -> UserUpdate {
+        UserUpdate::new(
+            self.email,
+            self.username,
+            self.password,
+            self.image,
+            self.bio,
+        )
     }
 }

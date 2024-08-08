@@ -5,7 +5,11 @@ use sqlx::prelude::FromRow;
 
 use crate::{
     config::{db::DbPool, RealWorldResult},
-    user::domain::{model::UserRegistry, repository::UserRepository, user::User},
+    user::domain::{
+        model::{UserRegistry, UserUpdate},
+        repository::UserRepository,
+        user::User,
+    },
 };
 
 pub struct ConcreteUserRepository {
@@ -72,6 +76,52 @@ impl UserRepository for ConcreteUserRepository {
         };
 
         Ok(user)
+    }
+
+    async fn find_by_id(&self, id: i64) -> RealWorldResult<User> {
+        let result = sqlx::query_as!(
+            UserEntity,
+            "SELECT *
+            FROM users
+            WHERE id = $1
+            AND deleted = false
+            ",
+            id
+        )
+        .fetch_optional(&self.db_pool)
+        .await?;
+        let user = match result {
+            Some(user_entity) => user_entity.to_user(),
+            None => return Err(anyhow!("Failed find user")),
+        };
+
+        Ok(user)
+    }
+    async fn update(&self, id: i64, user_update: UserUpdate) -> RealWorldResult<User> {
+        let result = sqlx::query_as!(
+            UserEntity,
+            r#"
+            UPDATE users
+            SET
+                email = $1,
+                username = $2,
+                password = $3,
+                image = $4,
+                bio = $5
+            WHERE id = $6
+            RETURNING *
+            "#,
+            user_update.email(),
+            user_update.username(),
+            user_update.password(),
+            user_update.image(),
+            user_update.bio(),
+            id
+        )
+        .fetch_one(&self.db_pool)
+        .await?;
+
+        Ok(result.to_user())
     }
 }
 

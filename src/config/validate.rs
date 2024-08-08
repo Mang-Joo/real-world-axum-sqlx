@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use axum::extract::{FromRequest, FromRequestParts, Request};
 use axum::http::request::Parts;
 use axum::{async_trait, Json};
-use log::{error, info};
+use log::error;
 use serde::de::DeserializeOwned;
 use validator::Validate;
 

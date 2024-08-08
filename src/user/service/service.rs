@@ -1,12 +1,15 @@
+use std::borrow::Borrow;
+
 use anyhow::anyhow;
 use axum::async_trait;
 use log::{error, info};
+use validator::ValidateRequired;
 
 use crate::{
     auth::{hash_password::DynHashPassword, jwt_encoder::ArcJwtEncoder},
     config::RealWorldResult,
     user::domain::{
-        model::{UserLogin, UserRegistry},
+        model::{UserLogin, UserRegistry, UserUpdate},
         repository::DynUserRepository,
         service::UserService,
         user::AuthUser,
@@ -62,7 +65,7 @@ impl UserService for ConcreteUserService {
             error!("Already signed email {}", email);
             return Err(anyhow!("Already signed email {}", email));
         } else {
-            Ok(())
+            RealWorldResult::Ok(())
         }
     }
 
@@ -91,6 +94,51 @@ impl UserService for ConcreteUserService {
 
         let token = self.jwt_encoder.create_token(&user)?;
 
-        Ok(AuthUser::new(user, token))
+        RealWorldResult::Ok(AuthUser::new(user, token))
+    }
+
+    async fn get_info(&self, id: i64) -> RealWorldResult<AuthUser> {
+        let user = self.repository.find_by_id(id).await?;
+
+        let token = self.jwt_encoder.create_token(&user)?;
+
+        RealWorldResult::Ok(AuthUser::new(user, token))
+    }
+
+    async fn update(&self, id: i64, request: UserUpdate) -> RealWorldResult<AuthUser> {
+        let user = self.repository.find_by_id(id).await?;
+        let updated_email = request.email().unwrap_or(user.email()).to_owned();
+        let updated_username = request.username().unwrap_or(user.user_name()).to_owned();
+        let mut updated_hashed_password = user.password().clone();
+
+        if request.password().is_some() {
+            updated_hashed_password = self.hash_password.hash(request.password().unwrap())?;
+        }
+
+        let updated_image = if let Some(image) = request.image() {
+            Some(image.to_owned())
+        } else {
+            user.image().to_owned()
+        };
+
+        let updated_bio = if let Some(bio) = request.bio() {
+            Some(bio.to_owned())
+        } else {
+            user.bio().to_owned()
+        };
+
+        let request = request.update_non_option_fields(
+            updated_email,
+            updated_username,
+            updated_hashed_password,
+            updated_image,
+            updated_bio,
+        );
+
+        let updated_user = self.repository.update(id, request).await?;
+
+        let token = self.jwt_encoder.create_token(&updated_user)?;
+
+        RealWorldResult::Ok(AuthUser::new(updated_user, token))
     }
 }
