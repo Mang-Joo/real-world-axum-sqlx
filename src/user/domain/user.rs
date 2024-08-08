@@ -1,8 +1,6 @@
-use anyhow::Context;
-use chrono::{DateTime, Utc};
-use crate::config;
+use anyhow::Ok;
 
-use crate::user::domain::hash_password::HashPassword;
+use crate::{auth::hash_password::DynHashPassword, config};
 
 #[derive(Debug, Clone)]
 pub struct User {
@@ -12,13 +10,7 @@ pub struct User {
     user_name: String,
     bio: Option<String>,
     image: Option<String>,
-    registration_date: DateTime<Utc>,
-    modified_date: DateTime<Utc>,
 }
-
-unsafe impl Send for User {}
-
-unsafe impl Sync for User {}
 
 impl User {
     pub fn new(
@@ -28,8 +20,6 @@ impl User {
         user_name: String,
         bio: Option<String>,
         image: Option<String>,
-        registration_date: DateTime<Utc>,
-        modified_date: DateTime<Utc>,
     ) -> User {
         User {
             id,
@@ -38,29 +28,8 @@ impl User {
             user_name,
             bio,
             image,
-            registration_date,
-            modified_date,
         }
     }
-
-    pub async fn not_verify_password(&self, input_password: String, hash: &(dyn HashPassword + Send + Sync)) -> bool {
-        !hash.verify(input_password, &self.password)
-            .await
-    }
-
-    pub async fn hash_password(self, hash: &(dyn HashPassword + Send + Sync)) -> config::Result<User> {
-        let hashed_password = hash
-            .hash(&self.password)
-            .await
-            .context("Failed hashing password")?;
-
-        let user = User {
-            password: hashed_password,
-            ..self
-        };
-        Ok(user)
-    }
-
 
     pub fn id(&self) -> i64 {
         self.id
@@ -81,46 +50,59 @@ impl User {
         &self.image
     }
 
-
     pub fn set_email(self, email: String) -> User {
-        User {
-            email,
-            modified_date: Utc::now(),
-            ..self
-        }
+        User { email, ..self }
     }
     pub fn set_password(self, password: String) -> User {
-        User {
-            password,
-            modified_date: Utc::now(),
-            ..self
-        }
+        User { password, ..self }
     }
     pub fn set_user_name(self, user_name: String) -> User {
-        User {
-            user_name,
-            modified_date: Utc::now(),
-            ..self
-        }
+        User { user_name, ..self }
     }
     pub fn set_bio(self, bio: Option<String>) -> User {
-        User {
-            bio,
-            modified_date: Utc::now(),
-            ..self
-        }
+        User { bio, ..self }
     }
     pub fn set_image(self, image: Option<String>) -> Self {
-        User {
-            image,
-            modified_date: Utc::now(),
-            ..self
+        User { image, ..self }
+    }
+}
+
+pub struct AuthUser {
+    username: String,
+    token: String,
+    email: String,
+    bio: Option<String>,
+    image: Option<String>,
+}
+
+impl AuthUser {
+    pub fn new(user: User, token: String) -> Self {
+        Self {
+            username: user.user_name,
+            token,
+            email: user.email,
+            bio: user.bio,
+            image: user.image,
         }
     }
-    pub fn registration_date(&self) -> DateTime<Utc> {
-        self.registration_date
+
+    pub fn username(&self) -> &str {
+        &self.username
     }
-    pub fn modified_date(&self) -> DateTime<Utc> {
-        self.modified_date
+
+    pub fn token(&self) -> &str {
+        &self.token
+    }
+
+    pub fn email(&self) -> &str {
+        &self.email
+    }
+
+    pub fn bio(&self) -> Option<String> {
+        self.bio.as_ref().map(|s| s.to_owned())
+    }
+
+    pub fn image(&self) -> Option<String> {
+        self.image.as_ref().map(|s| s.to_owned())
     }
 }
