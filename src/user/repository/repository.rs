@@ -5,10 +5,7 @@ use sqlx::prelude::FromRow;
 
 use crate::{
     config::{db::DbPool, RealWorldResult},
-    user::{
-        domain::{repository::UserRepository, user::User},
-        service::model::UserRegistry,
-    },
+    user::domain::{model::UserRegistry, repository::UserRepository, user::User},
 };
 
 pub struct ConcreteUserRepository {
@@ -54,6 +51,27 @@ impl UserRepository for ConcreteUserRepository {
         .await?;
 
         RealWorldResult::Ok(result.is_some())
+    }
+
+    async fn find_by_email(&self, email: String) -> RealWorldResult<User> {
+        let result = sqlx::query_as!(
+            UserEntity,
+            "SELECT * 
+            FROM users 
+            WHERE email = $1
+            AND deleted = false
+            ",
+            email
+        )
+        .fetch_optional(&self.db_pool)
+        .await?;
+
+        let user = match result {
+            Some(user_entity) => user_entity.to_user(),
+            None => return Err(anyhow!("Failed find user")),
+        };
+
+        Ok(user)
     }
 }
 

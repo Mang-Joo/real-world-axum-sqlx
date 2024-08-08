@@ -2,9 +2,12 @@ use std::sync::Arc;
 
 use axum::async_trait;
 
-use crate::{config::RealWorldResult, user::service::model::UserRegistry};
+use crate::config::RealWorldResult;
 
-use super::user::AuthUser;
+use super::{
+    model::{UserLogin, UserRegistry},
+    user::AuthUser,
+};
 
 pub type DynUserService = Arc<dyn UserService + Send + Sync>;
 
@@ -12,4 +15,5 @@ pub type DynUserService = Arc<dyn UserService + Send + Sync>;
 pub trait UserService {
     async fn registry(&self, user_registry: UserRegistry) -> RealWorldResult<AuthUser>;
     async fn is_exist(&self, email: String) -> RealWorldResult<()>;
+    async fn login(&self, login: UserLogin) -> RealWorldResult<AuthUser>;
 }

@@ -5,10 +5,13 @@ use log::{error, info};
 use crate::{
     auth::{hash_password::DynHashPassword, jwt_encoder::ArcJwtEncoder},
     config::RealWorldResult,
-    user::domain::{repository::DynUserRepository, service::UserService, user::AuthUser},
+    user::domain::{
+        model::{UserLogin, UserRegistry},
+        repository::DynUserRepository,
+        service::UserService,
+        user::AuthUser,
+    },
 };
-
-use super::model::UserRegistry;
 
 pub struct ConcreteUserService {
     repository: DynUserRepository,
@@ -61,5 +64,33 @@ impl UserService for ConcreteUserService {
         } else {
             Ok(())
         }
+    }
+
+    async fn login(&self, login: UserLogin) -> RealWorldResult<AuthUser> {
+        let user = self
+            .repository
+            .find_by_email(login.email().to_string())
+            .await;
+
+        let user = match user {
+            Ok(user) => {
+                info!("Get User info Id is : {}", user.id());
+                user
+            }
+            Err(_err) => {
+                error!("Failed get user info email is {}", login.email());
+                return Err(anyhow!("The email does not exist."));
+            }
+        };
+
+        let verify = self.hash_password.verify(login.password(), user.password());
+        if !verify {
+            error!("Password is not matched. please check again.");
+            return Err(anyhow!("Password is not matched. please check again."));
+        }
+
+        let token = self.jwt_encoder.create_token(&user)?;
+
+        Ok(AuthUser::new(user, token))
     }
 }

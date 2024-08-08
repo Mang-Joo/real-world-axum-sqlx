@@ -39,3 +39,22 @@ impl UserRegistry {
         &self.password
     }
 }
+
+pub struct UserLogin {
+    email: String,
+    password: String,
+}
+
+impl UserLogin {
+    pub fn new(email: String, password: String) -> Self {
+        Self { email, password }
+    }
+
+    pub fn email(&self) -> &str {
+        &self.email
+    }
+
+    pub fn password(self) -> String {
+        self.password
+    }
+}

@@ -4,11 +4,11 @@ use validator::Validate;
 use validator_derive::Validate;
 
 use crate::config::error::AppError;
-use crate::config::validate::ValidationExtractor;
+use crate::config::validate::{self, ValidationExtractor};
 
+use super::domain::model::{UserLogin, UserRegistry};
 use super::domain::service::DynUserService;
 use super::domain::user::AuthUser;
-use super::service::model::UserRegistry;
 
 #[derive(Serialize, Deserialize, Validate)]
 pub struct UserRequestDto<T: Validate> {
@@ -27,12 +27,7 @@ pub async fn register_api(
 ) -> Result<Json<UserResponseDto<UserResponse>>, AppError> {
     let user_registry = request.user;
 
-    let _ = service
-        .is_exist(user_registry.email.clone().unwrap())
-        .await
-        .map_err(|err| {
-            return AppError::AnyHow(err);
-        })?;
+    let _ = service.is_exist(user_registry.email.clone()).await?;
 
     let auth_user = service
         .registry(user_registry.to_registry())
@@ -45,22 +40,28 @@ pub async fn register_api(
     Ok(Json(UserResponseDto { user: response }))
 }
 
+pub async fn login_api(
+    Extension(service): Extension<DynUserService>,
+    ValidationExtractor(request): ValidationExtractor<UserRequestDto<UserLoginRequest>>,
+) -> Result<Json<UserResponseDto<UserResponse>>, AppError> {
+    let auth_user = service.login(request.user.to_login()).await?;
+
+    let response = UserResponse::new(auth_user);
+    Ok(Json(UserResponseDto { user: response }))
+}
+
 #[derive(Deserialize, Validate)]
 pub struct UserRegisterApiRequest {
     #[validate(length(min = 1, message = "User Name is required."))]
-    username: Option<String>,
+    username: String,
     #[validate(length(min = 1, message = "Email is required."))]
-    email: Option<String>,
-    #[validate(length(min = 8, message = "Password is required."))]
-    password: Option<String>,
+    email: String,
+    #[validate(length(min = 8, message = "Password is wrong."))]
+    password: String,
 }
 impl UserRegisterApiRequest {
     fn to_registry(self) -> UserRegistry {
-        UserRegistry::new(
-            self.username.unwrap(),
-            self.email.unwrap(),
-            self.password.unwrap(),
-        )
+        UserRegistry::new(self.username, self.email, self.password)
     }
 }
 
@@ -82,5 +83,19 @@ impl UserResponse {
             bio: auth_user.bio(),
             image: auth_user.image(),
         }
+    }
+}
+
+#[derive(Validate, Deserialize)]
+pub struct UserLoginRequest {
+    #[validate(length(min = 1, message = "Email is required."))]
+    email: String,
+    #[validate(length(min = 8, message = "Password is wrong."))]
+    password: String,
+}
+
+impl UserLoginRequest {
+    fn to_login(self) -> UserLogin {
+        UserLogin::new(self.email, self.password)
     }
 }

@@ -4,6 +4,7 @@ use anyhow::anyhow;
 use axum::extract::{FromRequest, FromRequestParts, Request};
 use axum::http::request::Parts;
 use axum::{async_trait, Json};
+use log::{error, info};
 use serde::de::DeserializeOwned;
 use validator::Validate;
 
@@ -28,12 +29,27 @@ where
         let result = Json::<T>::from_request(req, state).await;
         let Json(value) = match result {
             Ok(value) => value,
-            Err(_) => {
-                return Err(AppError::Forbidden);
+            Err(err) => {
+                let msg = err.body_text();
+                error!("Json parsing error {}", msg);
+                if msg.contains("missing field") {
+                    if let Some(field_name) = msg.split("missing field ").nth(1) {
+                        let field_name = field_name
+                            .split_whitespace()
+                            .next()
+                            .unwrap_or("")
+                            .trim_matches('`')
+                            .to_string();
+                        return Err(AppError::MissingFieldError(field_name));
+                    }
+                };
+                error!("{}", err);
+                return Err(AppError::InternalServerError);
             }
         };
 
         if let Err(errors) = value.validate() {
+            error!("Validation Error {}", errors);
             return Err(AppError::ValidateError(errors));
         }
 
