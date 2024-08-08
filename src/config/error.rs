@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
-use axum::Json;
 use axum::response::{IntoResponse, Response};
+use axum::Json;
 use serde::Serialize;
 use thiserror::Error;
 use validator::ValidationErrors;
@@ -28,29 +28,26 @@ pub enum AppError {
 impl AppError {
     fn status_code(&self) -> StatusCode {
         match self {
-            AppError::Unauthorized => { StatusCode::UNAUTHORIZED }
-            AppError::Forbidden => { StatusCode::FORBIDDEN }
-            AppError::AnyHow(_) => { StatusCode::BAD_REQUEST }
-            AppError::ValidateError(_) => { StatusCode::BAD_REQUEST }
-            // AppError::InternalServerError(_) => { StatusCode::INTERNAL_SERVER_ERROR }
+            AppError::Unauthorized => StatusCode::UNAUTHORIZED,
+            AppError::Forbidden => StatusCode::FORBIDDEN,
+            AppError::AnyHow(_) => StatusCode::BAD_REQUEST,
+            AppError::ValidateError(_) => StatusCode::BAD_REQUEST, // AppError::InternalServerError(_) => { StatusCode::INTERNAL_SERVER_ERROR }
         }
     }
 
     fn error_code(&self) -> u16 {
         match self {
-            AppError::Unauthorized => { UNAUTHORIZED_ERROR_CODE }
-            AppError::Forbidden => { FORBIDDEN_ERROR_CODE }
-            AppError::AnyHow(_) => { BAD_REQUEST }
-            AppError::ValidateError(_) => { VALIDATE_ERROR_CODE }
-            // AppError::InternalServerError(_) => { INTERNAL_SERVER_ERROR }
+            AppError::Unauthorized => UNAUTHORIZED_ERROR_CODE,
+            AppError::Forbidden => FORBIDDEN_ERROR_CODE,
+            AppError::AnyHow(_) => BAD_REQUEST,
+            AppError::ValidateError(_) => VALIDATE_ERROR_CODE, // AppError::InternalServerError(_) => { INTERNAL_SERVER_ERROR }
         }
     }
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        (self.status_code(), Json(ErrorResponse::new(&self)))
-            .into_response()
+        (self.status_code(), Json(ErrorResponse::new(&self))).into_response()
     }
 }
 
