@@ -1,7 +1,3 @@
-use anyhow::Ok;
-
-use crate::{auth::hash_password::DynHashPassword, config};
-
 #[derive(Debug, Clone)]
 pub struct User {
     id: i64,

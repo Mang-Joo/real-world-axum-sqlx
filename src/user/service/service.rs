@@ -12,7 +12,7 @@ use crate::{
         model::{UserLogin, UserRegistry, UserUpdate},
         repository::DynUserRepository,
         service::UserService,
-        user::AuthUser,
+        user::{AuthUser, User},
     },
 };
 
@@ -140,5 +140,22 @@ impl UserService for ConcreteUserService {
         let token = self.jwt_encoder.create_token(&updated_user)?;
 
         RealWorldResult::Ok(AuthUser::new(updated_user, token))
+    }
+
+    async fn get_info_by_user_name(&self, username: String) -> RealWorldResult<User> {
+        info!("[Get User Info by Username {}]", &username);
+
+        let user = self.repository.find_by_username(username).await;
+
+        match user {
+            Ok(user) => {
+                info!("Get User Success");
+                Ok(user)
+            }
+            Err(err) => {
+                error!("[Get User Failed] {}", err);
+                Err(err)
+            }
+        }
     }
 }

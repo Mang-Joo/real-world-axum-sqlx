@@ -123,6 +123,24 @@ impl UserRepository for ConcreteUserRepository {
 
         Ok(result.to_user())
     }
+
+    async fn find_by_username(&self, username: String) -> RealWorldResult<User> {
+        let optional_entity = sqlx::query_as!(
+            UserEntity,
+            "SELECT * 
+            FROM users
+            WHERE username = $1
+            ",
+            &username
+        )
+        .fetch_optional(&self.db_pool)
+        .await?;
+
+        match optional_entity {
+            Some(user_entity) => Ok(user_entity.to_user()),
+            None => Err(anyhow!("Not Found Data {}", username)),
+        }
+    }
 }
 
 #[derive(FromRow)]

@@ -6,7 +6,7 @@ use crate::config::RealWorldResult;
 
 use super::{
     model::{UserLogin, UserRegistry, UserUpdate},
-    user::AuthUser,
+    user::{AuthUser, User},
 };
 
 pub type DynUserService = Arc<dyn UserService + Send + Sync>;
@@ -18,4 +18,5 @@ pub trait UserService {
     async fn login(&self, login: UserLogin) -> RealWorldResult<AuthUser>;
     async fn get_info(&self, id: i64) -> RealWorldResult<AuthUser>;
     async fn update(&self, id: i64, user_update: UserUpdate) -> RealWorldResult<AuthUser>;
+    async fn get_info_by_user_name(&self, username: String) -> RealWorldResult<User>;
 }

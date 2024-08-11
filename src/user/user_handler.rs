@@ -4,7 +4,7 @@ use validator::Validate;
 use validator_derive::Validate;
 
 use crate::config::error::AppError;
-use crate::config::validate::{self, JwtValidationExtractor, ValidationExtractor};
+use crate::config::validate::{JwtValidationExtractor, ValidationExtractor};
 
 use super::domain::model::{UserLogin, UserRegistry, UserUpdate};
 use super::domain::service::DynUserService;

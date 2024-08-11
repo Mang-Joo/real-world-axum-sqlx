@@ -18,4 +18,5 @@ pub trait UserRepository {
     async fn find_by_email(&self, email: String) -> RealWorldResult<User>;
     async fn find_by_id(&self, id: i64) -> RealWorldResult<User>;
     async fn update(&self, id: i64, user_update: UserUpdate) -> RealWorldResult<User>;
+    async fn find_by_username(&self, username: String) -> RealWorldResult<User>;
 }

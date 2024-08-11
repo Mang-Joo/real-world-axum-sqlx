@@ -5,6 +5,10 @@ use crate::{
         hash_password::{ArgonHash, DynHashPassword, HashPassword},
         jwt_encoder::JwtEncoder,
     },
+    profile::{
+        domain::service::DynProfileService, repository::repository::ConcreteProfileRepository,
+        service::service::ConcreteProfileServce,
+    },
     user::{
         domain::{repository::DynUserRepository, service::DynUserService},
         repository::repository::ConcreteUserRepository,
@@ -26,4 +30,13 @@ pub fn create_user_service(db_pool: DbPool, arc_app_state: ArcAppState) -> DynUs
         Arc::new(jwt_encoder),
     ));
     user_service
+}
+
+pub fn create_profile_service(db_pool: DbPool, user_service: DynUserService) -> DynProfileService {
+    let user_service = user_service.clone();
+    let repository = ConcreteProfileRepository::new(db_pool.clone());
+    let repository = Arc::new(repository);
+
+    let profile_service = ConcreteProfileServce::new(repository, user_service);
+    Arc::new(profile_service)
 }
