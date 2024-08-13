@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use axum::async_trait;
 
 use crate::{
@@ -6,12 +7,12 @@ use crate::{
 };
 
 pub struct ConcreteProfileRepository {
-    pool: DbPool,
+    db_pool: DbPool,
 }
 
 impl ConcreteProfileRepository {
     pub fn new(pool: DbPool) -> Self {
-        Self { pool }
+        Self { db_pool: pool }
     }
 }
 
@@ -24,13 +25,51 @@ impl ProfileRepository for ConcreteProfileRepository {
             FROM user_follow
             WHERE follower_id = $1
             AND following_id = $2
+            AND DELETED = false
             ",
             follower_id,
             following_id
         )
-        .fetch_optional(&self.pool)
+        .fetch_optional(&self.db_pool)
         .await?;
 
         Ok(is_follow.is_some())
+    }
+
+    async fn follow_user(&self, follower_id: i64, following_id: i64) -> RealWorldResult<()> {
+        let result = sqlx::query!(
+            "
+            INSERT INTO user_follow (follower_id, following_id)
+            VALUES ($1, $2)
+            ",
+            follower_id,
+            following_id
+        )
+        .execute(&self.db_pool)
+        .await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(err) => Err(anyhow!("{}", err)),
+        }
+    }
+
+    async fn unfollow(&self, follower_id: i64, following_id: i64) -> RealWorldResult<()> {
+        let result = sqlx::query!(
+            "
+            UPDATE user_follow SET deleted = true
+            WHERE follower_id = $1
+            AND following_id = $2
+            ",
+            follower_id,
+            following_id
+        )
+        .execute(&self.db_pool)
+        .await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(err) => Err(anyhow!("{}", err)),
+        }
     }
 }

@@ -109,6 +109,7 @@ impl UserRepository for ConcreteUserRepository {
                 image = $4,
                 bio = $5
             WHERE id = $6
+            AND deleted = false
             RETURNING *
             "#,
             user_update.email(),
@@ -130,6 +131,7 @@ impl UserRepository for ConcreteUserRepository {
             "SELECT * 
             FROM users
             WHERE username = $1
+            AND deleted = false
             ",
             &username
         )

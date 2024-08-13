@@ -4,7 +4,7 @@ use axum::async_trait;
 
 use crate::config::RealWorldResult;
 
-use super::profile::Profile;
+use super::model::Profile;
 
 pub type DynProfileService = Arc<dyn ProfileService + Send + Sync>;
 
@@ -14,5 +14,17 @@ pub trait ProfileService {
         &self,
         optional_user: Option<i64>,
         username: String,
+    ) -> RealWorldResult<Profile>;
+
+    async fn follow_user(
+        &self,
+        follower_id: i64,
+        following_username: String,
+    ) -> RealWorldResult<Profile>;
+
+    async fn unfollow(
+        &self,
+        follower_id: i64,
+        following_username: String,
     ) -> RealWorldResult<Profile>;
 }

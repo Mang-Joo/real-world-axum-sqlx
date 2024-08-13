@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-use crate::profile::domain::profile::Profile;
+use crate::profile::domain::model::Profile;
 
 #[derive(Serialize)]
-pub struct ProfileResponseDto<T> {
+pub struct ProfileResponseDto<T: Serialize> {
     pub profile: T,
 }
 
@@ -15,12 +15,12 @@ pub struct ProfileResponse {
     following: bool,
 }
 
-impl ProfileResponse {
-    pub fn new(profile: Profile) -> Self {
+impl From<Profile> for ProfileResponse {
+    fn from(profile: Profile) -> Self {
         Self {
             username: profile.username().to_string(),
-            bio: profile.bio().to_owned().cloned(),
-            image: profile.image().to_owned().cloned(),
+            bio: profile.bio().cloned(),
+            image: profile.image().cloned(),
             following: profile.following(),
         }
     }
