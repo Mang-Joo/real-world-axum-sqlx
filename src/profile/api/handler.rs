@@ -5,7 +5,7 @@ use crate::{
         error::AppError,
         validate::{JwtValidationExtractor, OptionalAuthenticateExtractor},
     },
-    profile::{self, domain::service::DynProfileService},
+    profile::domain::service::DynProfileService,
 };
 
 use super::model::{ProfileResponse, ProfileResponseDto};
